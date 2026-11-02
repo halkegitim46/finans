@@ -69,8 +69,16 @@ interface InvoiceDao {
     suspend fun getAllUnpaid(): List<OccurrenceWithTemplate>
 
     /** Yalnızca ödenmemiş dönem kapatılabilir; zaten ödenmişse 0 döner (çift ödeme engeli). */
-    @Query("UPDATE invoice_occurrences SET status = 'PAID', paidAt = :now, updatedAt = :now WHERE id = :id AND status = 'UNPAID'")
-    suspend fun markPaid(id: Long, now: Long): Int
+    @Query("UPDATE invoice_occurrences SET status = 'PAID', paidAt = :paidAt, updatedAt = :now WHERE id = :id AND status = 'UNPAID'")
+    suspend fun markPaid(id: Long, paidAt: Long, now: Long): Int
+
+    /** Ödeme geri alma: yalnızca ödenmiş dönem tekrar ödenmemiş olur. */
+    @Query("UPDATE invoice_occurrences SET status = 'UNPAID', paidAt = NULL, updatedAt = :now WHERE id = :id AND status = 'PAID'")
+    suspend fun reopen(id: Long, now: Long): Int
+
+    @Transaction
+    @Query("SELECT * FROM invoice_occurrences ORDER BY dueDate")
+    fun observeAllOccurrences(): Flow<List<OccurrenceWithTemplate>>
 
     @Query("UPDATE invoice_occurrences SET status = 'CANCELLED', updatedAt = :now WHERE id = :id AND status = 'UNPAID'")
     suspend fun markCancelled(id: Long, now: Long): Int

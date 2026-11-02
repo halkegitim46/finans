@@ -36,4 +36,7 @@ interface PersonDao {
     /** Kişi fiziksel olarak silinmez; arşivlenir, finansal kayıtlar korunur. */
     @Query("UPDATE persons SET isArchived = :archived, updatedAt = :now WHERE id = :id")
     suspend fun setArchived(id: Long, archived: Boolean, now: Long): Int
+
+    @Query("SELECT * FROM persons")
+    fun observeAll(): Flow<List<PersonEntity>>
 }

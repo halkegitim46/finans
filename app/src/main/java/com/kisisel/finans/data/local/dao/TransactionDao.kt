@@ -1,11 +1,13 @@
 package com.kisisel.finans.data.local.dao
 
 import androidx.room.Dao
+import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.kisisel.finans.data.local.entity.TransactionEntity
+import com.kisisel.finans.domain.model.PersonTypeTotal
 import com.kisisel.finans.domain.model.TypeTotal
 import kotlinx.coroutines.flow.Flow
 
@@ -68,4 +70,55 @@ interface TransactionDao {
 
     @Query("SELECT COALESCE(SUM(-openingBalanceKurus), 0) FROM persons WHERE openingBalanceKurus < 0")
     fun observeOpeningPayables(): Flow<Long>
+
+    @Query("SELECT * FROM transactions WHERE idempotencyKey = :key")
+    suspend fun getByIdempotencyKey(key: String): TransactionEntity?
+
+    /** Yalnızca açıklama/tarih/vade güncellenir; tutar ve tür değişmez. İptal edilmiş kayıt güncellenmez. */
+    @Query(
+        "UPDATE transactions SET description = :description, transactionDate = :date, dueDate = :dueDate, " +
+            "updatedAt = :now WHERE id = :id AND isCancelled = 0"
+    )
+    suspend fun updateDetails(id: Long, description: String, date: Long, dueDate: Long?, now: Long): Int
+
+    /** Alacak oluşturan işlemler ve aktif tahsilatlarla kapatılan tutarları (eskiden yeniye). */
+    @Query(
+        "SELECT t.*, COALESCE((SELECT SUM(p.amountKurus) FROM payments p " +
+            "INNER JOIN transactions s ON s.id = p.settlementTxId " +
+            "WHERE p.claimTxId = t.id AND s.isCancelled = 0), 0) AS allocatedKurus " +
+            "FROM transactions t WHERE t.personId = :personId AND t.isCancelled = 0 " +
+            "AND t.type IN ('LEND', 'PAID_ON_BEHALF') ORDER BY t.transactionDate, t.id"
+    )
+    suspend fun getReceivableClaims(personId: Long): List<ClaimWithAllocated>
+
+    @Query(
+        "SELECT t.*, COALESCE((SELECT SUM(p.amountKurus) FROM payments p " +
+            "INNER JOIN transactions s ON s.id = p.settlementTxId " +
+            "WHERE p.claimTxId = t.id AND s.isCancelled = 0), 0) AS allocatedKurus " +
+            "FROM transactions t WHERE t.personId = :personId AND t.isCancelled = 0 " +
+            "AND t.type = 'BORROW' ORDER BY t.transactionDate, t.id"
+    )
+    suspend fun getPayableClaims(personId: Long): List<ClaimWithAllocated>
+
+    @Query(
+        "SELECT personId AS personId, type AS type, COALESCE(SUM(amountKurus), 0) AS total " +
+            "FROM transactions WHERE isCancelled = 0 GROUP BY personId, type"
+    )
+    fun observeTotalsByPerson(): Flow<List<PersonTypeTotal>>
+
+    /** Faturadan doğan aktif (iptal edilmemiş) ödeme kaydı. */
+    @Query("SELECT * FROM transactions WHERE occurrenceId = :occurrenceId AND isCancelled = 0 LIMIT 1")
+    suspend fun getActiveByOccurrence(occurrenceId: Long): TransactionEntity?
+
+    /** İptaller dahil; her ödeme için benzersiz idempotency anahtarı üretmekte kullanılır. */
+    @Query("SELECT COUNT(*) FROM transactions WHERE occurrenceId = :occurrenceId")
+    suspend fun countByOccurrence(occurrenceId: Long): Int
+}
+
+/** Bir alacak/borç işlemi ve aktif (iptal edilmemiş) tahsilat/ödemelerle kapatılan toplamı. */
+data class ClaimWithAllocated(
+    @Embedded val tx: TransactionEntity,
+    val allocatedKurus: Long
+) {
+    val openKurus: Long get() = tx.amountKurus - allocatedKurus
 }

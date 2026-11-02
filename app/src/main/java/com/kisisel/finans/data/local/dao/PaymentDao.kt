@@ -13,7 +13,12 @@ interface PaymentDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(payment: PaymentEntity): Long
 
-    @Query("SELECT COALESCE(SUM(amountKurus), 0) FROM payments WHERE claimTxId = :claimTxId")
+    /** İptal edilmiş tahsilat/ödemelerin dağıtımları sayılmaz. */
+    @Query(
+        "SELECT COALESCE(SUM(p.amountKurus), 0) FROM payments p " +
+            "INNER JOIN transactions s ON s.id = p.settlementTxId " +
+            "WHERE p.claimTxId = :claimTxId AND s.isCancelled = 0"
+    )
     suspend fun sumAllocatedForClaim(claimTxId: Long): Long
 
     @Query("SELECT COALESCE(SUM(amountKurus), 0) FROM payments WHERE settlementTxId = :settlementTxId")
