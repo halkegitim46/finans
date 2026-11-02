@@ -21,6 +21,9 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      - name: Gradle Wrapper Dosyalarını Oluştur (Eksikse)
+        run: gradle wrapper --gradle-version 8.9
+
       - name: Gradlew Çalıştırma İzni Ver
         run: chmod +x gradlew
 
