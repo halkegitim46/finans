@@ -1,0 +1,39 @@
+package com.kisisel.finans.data.local
+
+import androidx.room.Database
+import androidx.room.RoomDatabase
+import com.kisisel.finans.data.local.dao.InvoiceDao
+import com.kisisel.finans.data.local.dao.PaymentDao
+import com.kisisel.finans.data.local.dao.PersonDao
+import com.kisisel.finans.data.local.dao.SettingsDao
+import com.kisisel.finans.data.local.dao.TransactionDao
+import com.kisisel.finans.data.local.entity.AppSettingEntity
+import com.kisisel.finans.data.local.entity.InvoiceOccurrenceEntity
+import com.kisisel.finans.data.local.entity.InvoiceTemplateEntity
+import com.kisisel.finans.data.local.entity.PaymentEntity
+import com.kisisel.finans.data.local.entity.PersonEntity
+import com.kisisel.finans.data.local.entity.TransactionEntity
+
+@Database(
+    entities = [
+        PersonEntity::class,
+        TransactionEntity::class,
+        InvoiceTemplateEntity::class,
+        InvoiceOccurrenceEntity::class,
+        PaymentEntity::class,
+        AppSettingEntity::class
+    ],
+    version = 1,
+    exportSchema = true
+)
+abstract class KisiselFinansDatabase : RoomDatabase() {
+    abstract fun personDao(): PersonDao
+    abstract fun transactionDao(): TransactionDao
+    abstract fun invoiceDao(): InvoiceDao
+    abstract fun paymentDao(): PaymentDao
+    abstract fun settingsDao(): SettingsDao
+
+    companion object {
+        const val NAME = "kisisel_finans.db"
+    }
+}
