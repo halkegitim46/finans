@@ -20,12 +20,54 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      # 1. ADIM: Sürüm numaralarını güncelle
+      - name: Sürüm numaralarını güncelle
+        run: |
+          VERSION_CODE=${{ github.run_number }}
+          VERSION_NAME="1.0.${{ github.run_number }}"
+
+          # versionCode ve versionName satırlarını değiştir (GNU sed özelliği: \s)
+          sed -i "s/^\(\s*\)versionCode = .*/\1versionCode = ${VERSION_CODE}/" app/build.gradle.kts
+          sed -i "s/^\(\s*\)versionName = .*/\1versionName = \"${VERSION_NAME}\"/" app/build.gradle.kts
+
+          echo "--- Güncel sürüm satırları ---"
+          grep -E "versionCode|versionName" app/build.gradle.kts
+
+          # Güvenlik kontrolü: değişiklik gerçekten uygulandı mı?
+          if ! grep -q "versionCode = ${VERSION_CODE}" app/build.gradle.kts; then
+            echo "HATA: versionCode güncellenemedi!"
+            exit 1
+          fi
+          if ! grep -q "versionName = \"${VERSION_NAME}\"" app/build.gradle.kts; then
+            echo "HATA: versionName güncellenemedi!"
+            exit 1
+          fi
+
+      # 2. ADIM: APK derle
       - name: Debug APK derle
         run: gradle assembleDebug --no-daemon --stacktrace
 
+      # 3. ADIM: APK dosyasını yeniden adlandır
+      - name: APK'yı yeniden adlandır
+        id: rename_apk
+        run: |
+          OLD_PATH="app/build/outputs/apk/debug/app-debug.apk"
+          NEW_NAME="FinansTakip_V${{ github.run_number }}.apk"
+          NEW_PATH="app/build/outputs/apk/debug/${NEW_NAME}"
+
+          if [ ! -f "$OLD_PATH" ]; then
+            echo "HATA: Derleme çıktısı bulunamadı: $OLD_PATH"
+            exit 1
+          fi
+
+          mv "$OLD_PATH" "$NEW_PATH"
+          echo "NEW_APK_PATH=$NEW_PATH" >> $GITHUB_OUTPUT
+          echo "NEW_APK_NAME=$NEW_NAME" >> $GITHUB_OUTPUT
+
+      # 4. ADIM: Artifact olarak yükle
       - name: APK'yı yükle
         uses: actions/upload-artifact@v6
         with:
-          name: KisiselFinansTakip-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: ${{ steps.rename_apk.outputs.NEW_APK_NAME }}
+          path: ${{ steps.rename_apk.outputs.NEW_APK_PATH }}
           if-no-files-found: error
