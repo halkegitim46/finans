@@ -1,41 +1,93 @@
-name: Android Build
+name: APK Derle
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
+    branches: [ main, master ]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 17
+          java-version: '17'
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
         with:
-          gradle-version: "8.9"
+          gradle-version: '8.9'
 
-      - name: Gradle Wrapper Dosyalarını Oluştur (Eksikse)
-        run: gradle wrapper --gradle-version 8.9
+      # Gradle wrapper yoksa oluştur; çalıştırma iznini her durumda ver
+      # (gradlew "Permission denied" hatasını önler).
+      - name: Gradle wrapper hazırla
+        run: |
+          if [ ! -f gradlew ]; then
+            gradle wrapper --gradle-version 8.9
+          fi
+          chmod +x gradlew
 
-      - name: Gradlew Çalıştırma İzni Ver
-        run: chmod +x gradlew
+      # Her derlemede sürüm numarasını (run_number) 1 artırır
+      - name: Sürüm numaralarını güncelle
+        run: |
+          VERSION_CODE=${{ github.run_number }}
+          VERSION_NAME="1.0.${{ github.run_number }}"
 
-      - name: Birim testleri
-        run: ./gradlew testDebugUnitTest --stacktrace
+          sed -i "s/^\(\s*\)versionCode = .*/\1versionCode = ${VERSION_CODE}/" app/build.gradle.kts
+          sed -i "s/^\(\s*\)versionName = .*/\1versionName = \"${VERSION_NAME}\"/" app/build.gradle.kts
 
+          echo "--- Güncel sürüm satırları ---"
+          grep -E "versionCode|versionName" app/build.gradle.kts
+
+          if ! grep -q "versionCode = ${VERSION_CODE}" app/build.gradle.kts; then
+            echo "HATA: versionCode güncellenemedi!"
+            exit 1
+          fi
+          if ! grep -q "versionName = \"${VERSION_NAME}\"" app/build.gradle.kts; then
+            echo "HATA: versionName güncellenemedi!"
+            exit 1
+          fi
+
+      # APK önce derlenip yüklenir; test hatası APK'yı engellemez.
       - name: Debug APK derle
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: APK yükle
-        uses: actions/upload-artifact@v4
+      - name: APK'yı yeniden adlandır
+        id: rename_apk
+        run: |
+          OLD_PATH="app/build/outputs/apk/debug/app-debug.apk"
+          NEW_NAME="FinansTakip_V${{ github.run_number }}.apk"
+          NEW_PATH="app/build/outputs/apk/debug/${NEW_NAME}"
+
+          if [ ! -f "$OLD_PATH" ]; then
+            echo "HATA: Derleme çıktısı bulunamadı: $OLD_PATH"
+            exit 1
+          fi
+
+          mv "$OLD_PATH" "$NEW_PATH"
+          echo "NEW_APK_PATH=$NEW_PATH" >> "$GITHUB_OUTPUT"
+          echo "NEW_APK_NAME=$NEW_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: APK'yı yükle
+        uses: actions/upload-artifact@v6
         with:
-          name: KisiselFinansTakip-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: ${{ steps.rename_apk.outputs.NEW_APK_NAME }}
+          path: ${{ steps.rename_apk.outputs.NEW_APK_PATH }}
           if-no-files-found: error
+
+      # Birim testleri APK'dan sonra çalışır; hata olursa job kırmızı olur ama APK zaten yüklenmiştir.
+      - name: Birim testleri
+        run: ./gradlew testDebugUnitTest --no-daemon --stacktrace
+
+      - name: Test raporunu yükle
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: test-raporu
+          path: app/build/reports/tests/
+          if-no-files-found: ignore
