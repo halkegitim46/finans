@@ -101,3 +101,20 @@ Kilit/Kurulum → Ana Sayfa | Kişiler (liste→detay) | Faturalar (liste→deta
 - **Gizlilik**: kilit ekranında genel metin ("Fatura hatırlatması"), tutar/ad yalnızca kilit açıkken görünür.
 - **Dokununca**: `MainActivity` (singleTop) `occurrence_id` ekstrasını alır → fatura dönemi detayı açılır.
   ⚠ Aşama 8'de uygulama kilidi eklenince bu yönlendirme kilit ekranı aşıldıktan sonra uygulanmalı.
+
+## Aşama 8 – Güvenlik
+- **Parola**: ilk kurulumda zorunlu (en az 8 karakter). PBKDF2-HMAC-SHA256, 600.000 iterasyon, 16 bayt rastgele tuz; açık metin saklanmaz,
+  sabit zamanlı karşılaştırma. PIN (4-8 rakam, isteğe bağlı) aynı yöntemle; PIN ayarlamak için parola tekrar doğrulanır.
+- **Deneme sınırı** (parola + PIN ortak, kalıcı): 5. hatalı denemede 30 sn kilit, sonra her hatada 2 katı, en çok 15 dk.
+- **Biyometrik**: yalnızca güçlü (class 3), kolaylık amaçlı kilit açma; başarılıysa deneme sayacı sıfırlanır.
+- **Kilit**: süreç yeniden başlayınca her zaman kilitli. Arka plana geçince (ayarlanabilir süre: hemen/30 sn/1 dk/5 dk) kilitlenir;
+  ekran döndürme kilitlemez. Bildirimden gelen fatura yönlendirmesi kilit açılana kadar bekler.
+- **Veritabanı şifreleme**: SQLCipher (AES-256), rastgele 256 bit anahtar → Android Keystore AES-GCM anahtarıyla sarmalanıp `db_key.bin` içinde saklanır.
+  Anahtar parolaya bağlı DEĞİL (arka plan işleri kilitliyken de çalışabilsin). Keystore anahtarı kullanıcı doğrulaması istemez.
+- **Eski veriden geçiş**: şifresiz `kisisel_finans.db` varsa ve şifreli veritabanı boşsa tüm tablolar kimlikler korunarak tek transaction'da
+  şifreli veritabanına kopyalanır, kayıtlar birebir doğrulanır; YALNIZCA başarılıysa eski dosya silinir. Başarısızlıkta eski dosya durur,
+  Ayarlar'da uyarı + silme seçeneği görünür.
+- **Unutulan parola**: kurtarılamaz (kasıtlı). Yollar: şifreli yedekten geri yükleme (Aşama 9) veya "SİL" yazarak tüm verileri silip baştan başlama.
+- **Ekran koruması**: FLAG_SECURE (varsayılan açık): ekran görüntüsü ve son uygulamalar önizlemesi engellenir.
+- **Loglar**: parola/PIN/tutar loglanmaz; beklenmeyen hatalarda ayrıntı gösterilmez.
+- Kapsam dışı/sonraki: yedek dosyası şifreleme (Aşama 9). Yedek için dosya seçici açılınca uygulama arka plana gidebilir; Aşama 9'da kısa süreli kilit istisnası eklenecek.
