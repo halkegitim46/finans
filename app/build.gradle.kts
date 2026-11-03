@@ -19,7 +19,23 @@ android {
         resourceConfigurations += "tr"
     }
 
+    // Sabit imza anahtarı (CI'da GitHub Secrets'tan gelir). Aynı anahtar = her sürüm eskisinin üstüne veri kaybı olmadan kurulur.
+    signingConfigs {
+        create("shared") {
+            val keystorePath = System.getenv("KFT_KEYSTORE_PATH")
+            if (keystorePath != null) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("KFT_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KFT_KEY_ALIAS")
+                keyPassword = System.getenv("KFT_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            if (System.getenv("KFT_KEYSTORE_PATH") != null) signingConfig = signingConfigs.getByName("shared")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -74,6 +90,8 @@ dependencies {
     implementation(libs.work.runtime)
     implementation(libs.datastore)
     implementation(libs.biometric)
+    implementation(libs.androidx.fragment)
+    implementation("net.zetetic:sqlcipher-android:${libs.versions.sqlcipher.get()}@aar")
     implementation(libs.coroutines.android)
 
     testImplementation(libs.junit)
