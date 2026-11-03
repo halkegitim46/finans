@@ -82,3 +82,6 @@ data class SettlementResult(
     /** Açık alacak/borç kayıtlarına dağıtılan kısım (kalanı başlangıç bakiyesinden düşer). */
     val allocatedKurus: Long
 )
+
+/** Defter satırı + kişi adı (İşlemler ve Ana Sayfa listeleri için). */
+data class LedgerLine(val entry: LedgerEntry, val personName: String)

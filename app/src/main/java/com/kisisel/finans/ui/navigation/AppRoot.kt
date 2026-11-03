@@ -18,6 +18,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.kisisel.finans.ui.home.HomeScreen
 import com.kisisel.finans.ui.invoices.InvoiceDetailScreen
 import com.kisisel.finans.ui.invoices.InvoiceEditScreen
 import com.kisisel.finans.ui.invoices.InvoiceListScreen
@@ -25,6 +26,7 @@ import com.kisisel.finans.ui.persons.PersonDetailScreen
 import com.kisisel.finans.ui.persons.PersonEditScreen
 import com.kisisel.finans.ui.persons.PersonListScreen
 import com.kisisel.finans.ui.placeholder.ComingSoonScreen
+import com.kisisel.finans.ui.transactions.TransactionsScreen
 
 @Composable
 fun AppRoot() {
@@ -36,6 +38,14 @@ fun AppRoot() {
     val personArg = listOf(navArgument(Routes.ARG_PERSON_ID) { type = NavType.LongType })
     val occurrenceArg = listOf(navArgument(Routes.ARG_OCCURRENCE_ID) { type = NavType.LongType })
     val templateArg = listOf(navArgument(Routes.ARG_TEMPLATE_ID) { type = NavType.LongType })
+
+    val goTop: (String) -> Unit = { route ->
+        nav.navigate(route) {
+            popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -65,7 +75,16 @@ fun AppRoot() {
             startDestination = Routes.HOME,
             modifier = Modifier.padding(bottom = inner.calculateBottomPadding())
         ) {
-            composable(Routes.HOME) { ComingSoonScreen("Ana Sayfa", 6) }
+            composable(Routes.HOME) {
+                HomeScreen(
+                    onOpenOccurrence = { nav.navigate(Routes.invoiceDetail(it)) },
+                    onOpenPerson = { nav.navigate(Routes.personDetail(it)) },
+                    onAddInvoice = { nav.navigate(Routes.invoiceEdit(0)) },
+                    onAddPerson = { nav.navigate(Routes.personEdit(0)) },
+                    onSeeInvoices = { goTop(Routes.INVOICES) },
+                    onSeeTransactions = { goTop(Routes.TRANSACTIONS) }
+                )
+            }
             composable(Routes.PERSONS) {
                 PersonListScreen(
                     onOpen = { nav.navigate(Routes.personDetail(it)) },
@@ -91,7 +110,9 @@ fun AppRoot() {
                     onDone = { nav.popBackStack() }
                 )
             }
-            composable(Routes.TRANSACTIONS) { ComingSoonScreen("İşlemler", 6) }
+            composable(Routes.TRANSACTIONS) {
+                TransactionsScreen(onOpenPerson = { nav.navigate(Routes.personDetail(it)) })
+            }
             composable(Routes.REPORTS) { ComingSoonScreen("Raporlar", 10) }
             composable(Routes.SETTINGS) { ComingSoonScreen("Ayarlar", 8) }
 

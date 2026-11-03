@@ -106,6 +106,9 @@ interface TransactionDao {
     )
     fun observeTotalsByPerson(): Flow<List<PersonTypeTotal>>
 
+    @Query("SELECT * FROM transactions ORDER BY transactionDate DESC, id DESC")
+    fun observeAll(): Flow<List<TransactionEntity>>
+
     /** Faturadan doğan aktif (iptal edilmemiş) ödeme kaydı. */
     @Query("SELECT * FROM transactions WHERE occurrenceId = :occurrenceId AND isCancelled = 0 LIMIT 1")
     suspend fun getActiveByOccurrence(occurrenceId: Long): TransactionEntity?

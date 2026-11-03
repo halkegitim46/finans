@@ -12,6 +12,7 @@ import com.kisisel.finans.domain.FinanceException
 import com.kisisel.finans.domain.LedgerCalculator
 import com.kisisel.finans.domain.model.DashboardTotals
 import com.kisisel.finans.domain.model.LedgerEntry
+import com.kisisel.finans.domain.model.LedgerLine
 import com.kisisel.finans.domain.model.NewClaim
 import com.kisisel.finans.domain.model.NewSettlement
 import com.kisisel.finans.domain.model.PersonSummary
@@ -187,6 +188,17 @@ class LedgerRepositoryImpl @Inject constructor(
                 monthCollected = monthSum(TransactionType.COLLECTION)
             )
         }
+    }
+
+    override fun observeAllLines(): Flow<List<LedgerLine>> =
+        combine(transactions.observeAll(), persons.observeAll()) { txs, people -> toLines(txs, people) }
+
+    override fun observeRecentLines(limit: Int): Flow<List<LedgerLine>> =
+        combine(transactions.observeRecent(limit), persons.observeAll()) { txs, people -> toLines(txs, people) }
+
+    private fun toLines(txs: List<TransactionEntity>, people: List<PersonEntity>): List<LedgerLine> {
+        val names = people.associate { it.id to it.fullName }
+        return txs.map { LedgerLine(it.toDomain(), names[it.personId].orEmpty()) }
     }
 
     private suspend fun requireActivePerson(id: Long): PersonEntity {

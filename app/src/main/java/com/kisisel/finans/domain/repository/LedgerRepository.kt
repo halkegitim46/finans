@@ -2,6 +2,7 @@ package com.kisisel.finans.domain.repository
 
 import com.kisisel.finans.domain.model.DashboardTotals
 import com.kisisel.finans.domain.model.LedgerEntry
+import com.kisisel.finans.domain.model.LedgerLine
 import com.kisisel.finans.domain.model.NewClaim
 import com.kisisel.finans.domain.model.NewSettlement
 import com.kisisel.finans.domain.model.PersonSummary
@@ -27,4 +28,10 @@ interface LedgerRepository {
     fun observeEntries(personId: Long): Flow<List<LedgerEntry>>
     fun observeRecentEntries(limit: Int): Flow<List<LedgerEntry>>
     fun observeDashboard(today: LocalDate): Flow<DashboardTotals>
+
+    /** Tüm kişilerin işlemleri (iptaller dahil), yeniden eskiye. */
+    fun observeAllLines(): Flow<List<LedgerLine>>
+
+    /** Son girilen işlemler (kayıt zamanına göre). */
+    fun observeRecentLines(limit: Int): Flow<List<LedgerLine>>
 }

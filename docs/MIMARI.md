@@ -80,3 +80,11 @@ Kilit/Kurulum → Ana Sayfa | Kişiler (liste→detay) | Faturalar (liste→deta
 - **Değişken tutar**: dönem tutarı boş kalır; tutar girilmeden ödenemez.
 - **Şablon düzenleme** yalnızca sonraki dönemleri etkiler; tekrar/ilk vade değişmez. Arşiv: yeni dönem üretilmez, geçmiş korunur.
 - Hatırlatma ayarları (7/3/1/vade günü, gecikme aralığı) şablonda saklanır; bildirimler Aşama 7'de.
+
+## Aşama 6 – Ana Sayfa ve İşlemler
+- **Ana Sayfa**: net bakiye, toplam (kalan) alacak/borç, bu ay ödemeler/tahsilatlar (hepsi veritabanından, `observeDashboard`),
+  geciken ve 30 gün içinde yaklaşan faturalar, son 8 işlem, hızlı işlemler (alacak/borç ekle, fatura ekle, ödeme yap, tahsilat al).
+- **Hızlı işlem akışı**: kişi seç → tutar/tarih penceresi (Aşama 4'teki `EntryDialog`) → aynı use case'ler. "Ödeme yap":
+  borcumu öde (DEBT_PAYMENT) veya kişi adına öde (PAID_ON_BEHALF). Tahsilat/ödemede yalnızca açık bakiyesi olan kişiler listelenir.
+- **İşlemler**: tüm kişilerin defteri; kişi/açıklama arama, tür filtresi, iptal edilenleri göster; tek tür seçilince toplam.
+- Sayfa açıkken gün/ay değişirse ana sayfa toplamları yeniden açılışta güncellenir (WorkManager Aşama 7).

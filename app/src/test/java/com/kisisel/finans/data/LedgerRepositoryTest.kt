@@ -240,4 +240,26 @@ class LedgerRepositoryTest {
         assertEquals(listOf("A"), list.map { it.person.fullName })
         assertTrue(list.single().balance.remainingReceivable == 1_000L)
     }
+
+    @Test fun linesCarryPersonNamesAndRecentIsLimited() = runDb {
+        val a = newPerson("Ayşe")
+        val b = newPerson("Bekir")
+        claim(a, LEND, 1_000)
+        claim(b, LEND, 2_000)
+        claim(a, LEND, 3_000)
+
+        val all = ledger.observeAllLines().first()
+        assertEquals(3, all.size)
+        assertEquals(setOf("Ayşe", "Bekir"), all.map { it.personName }.toSet())
+        assertEquals(2, ledger.observeRecentLines(2).first().size)
+    }
+
+    @Test fun allLinesIncludeCancelledEntries() = runDb {
+        val p = newPerson()
+        val c = claim(p, LEND, 1_000)
+        ledger.cancel(c)
+        val lines = ledger.observeAllLines().first()
+        assertEquals(1, lines.size)
+        assertTrue(lines.single().entry.isCancelled)
+    }
 }
