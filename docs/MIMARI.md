@@ -88,3 +88,16 @@ Kilit/Kurulum → Ana Sayfa | Kişiler (liste→detay) | Faturalar (liste→deta
   borcumu öde (DEBT_PAYMENT) veya kişi adına öde (PAID_ON_BEHALF). Tahsilat/ödemede yalnızca açık bakiyesi olan kişiler listelenir.
 - **İşlemler**: tüm kişilerin defteri; kişi/açıklama arama, tür filtresi, iptal edilenleri göster; tek tür seçilince toplam.
 - Sayfa açıkken gün/ay değişirse ana sayfa toplamları yeniden açılışta güncellenir (WorkManager Aşama 7).
+
+## Aşama 7 – Bildirimler (WorkManager)
+- **Akış**: `ReminderWorker` (günlük 09:00 civarı) → `ReminderService.run()` → eksik dönemleri üret → `ReminderPlanner` (saf mantık)
+  bugün gönderilecekleri seçer → `ReminderNotifier` bildirimi gösterir → `ReminderLog` (DataStore) gönderilenleri kaydeder.
+- **Kurallar**: vadeden önce şablonda seçili günlerde (7/3/1/vade günü) bir kez; gecikmişse 1. günde ve sonra her N günde (N=0 kapalı).
+  Ödenmiş/iptal/arşivli/hatırlatması kapalı dönemler için gönderilmez. Aynı anahtar ("dönem:gün") ikinci kez gönderilmez.
+- **Çalışma zamanı**: uygulama açılışı + yeniden başlatma/güncelleme (`BootReceiver`) → `schedule()` (KEEP, tekrar çağrı güvenli).
+  Açılışta bir kez ek kontrol (kaçan günleri yakalar). `Mutex` ile eşzamanlı çalışma çift bildirim üretmez.
+- **Android**: POST_NOTIFICATIONS (13+) ilk açılışta açıklamalı istenir; kapalıysa Ana Sayfa'da uyarı + ayarlar bağlantısı.
+  Pil: WorkManager Doze'a uyumlu, tam zamanlı alarm/pil muafiyeti yok → bildirim dakikalar-saatler gecikebilir.
+- **Gizlilik**: kilit ekranında genel metin ("Fatura hatırlatması"), tutar/ad yalnızca kilit açıkken görünür.
+- **Dokununca**: `MainActivity` (singleTop) `occurrence_id` ekstrasını alır → fatura dönemi detayı açılır.
+  ⚠ Aşama 8'de uygulama kilidi eklenince bu yönlendirme kilit ekranı aşıldıktan sonra uygulanmalı.

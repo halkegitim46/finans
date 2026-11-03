@@ -43,6 +43,8 @@ import com.kisisel.finans.domain.model.LedgerLine
 import com.kisisel.finans.domain.model.PersonSummary
 import com.kisisel.finans.domain.model.TransactionType
 import com.kisisel.finans.ui.common.dialogTitle
+import com.kisisel.finans.ui.common.NotificationsBanner
+import com.kisisel.finans.ui.common.rememberNotificationsEnabled
 import com.kisisel.finans.ui.common.dueStatusText
 import com.kisisel.finans.ui.common.label
 import com.kisisel.finans.ui.common.tr
@@ -68,6 +70,7 @@ fun HomeScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     var dialog by remember { mutableStateOf<HomeDialog?>(null) }
+    val notificationsEnabled = rememberNotificationsEnabled()
 
     Scaffold(
         contentWindowInsets = WindowInsets.statusBars,
@@ -78,6 +81,8 @@ fun HomeScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            if (!notificationsEnabled) item { NotificationsBanner() }
+
             state.totals?.let { t -> item { TotalsSection(t) } }
 
             item {

@@ -4,6 +4,7 @@ import com.kisisel.finans.domain.model.InvoiceOccurrence
 import com.kisisel.finans.domain.model.InvoiceTemplate
 import com.kisisel.finans.domain.model.InvoiceUpdate
 import com.kisisel.finans.domain.model.NewInvoice
+import com.kisisel.finans.domain.model.ReminderCandidate
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 
@@ -42,4 +43,7 @@ interface InvoiceRepository {
     fun observeOccurrences(): Flow<List<InvoiceOccurrence>>
     fun observeOccurrence(id: Long): Flow<InvoiceOccurrence?>
     fun observeHistory(templateId: Long): Flow<List<InvoiceOccurrence>>
+
+    /** Hatırlatma gönderilebilecek ödenmemiş dönemler (aktif, arşivlenmemiş, hatırlatması açık şablonlar). */
+    suspend fun getReminderCandidates(): List<ReminderCandidate>
 }

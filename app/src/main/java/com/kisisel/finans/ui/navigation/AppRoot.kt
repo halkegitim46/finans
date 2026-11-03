@@ -9,6 +9,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -18,6 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.kisisel.finans.ui.common.NotificationPermissionPrompt
 import com.kisisel.finans.ui.home.HomeScreen
 import com.kisisel.finans.ui.invoices.InvoiceDetailScreen
 import com.kisisel.finans.ui.invoices.InvoiceEditScreen
@@ -29,8 +31,20 @@ import com.kisisel.finans.ui.placeholder.ComingSoonScreen
 import com.kisisel.finans.ui.transactions.TransactionsScreen
 
 @Composable
-fun AppRoot() {
+fun AppRoot(
+    pendingOccurrenceId: Long? = null,
+    onPendingConsumed: () -> Unit = {}
+) {
     val nav = rememberNavController()
+
+    // Bildirime dokunulunca ilgili fatura dönemini aç.
+    LaunchedEffect(pendingOccurrenceId) {
+        if (pendingOccurrenceId != null && pendingOccurrenceId > 0) {
+            nav.navigate(Routes.invoiceDetail(pendingOccurrenceId))
+            onPendingConsumed()
+        }
+    }
+    NotificationPermissionPrompt()
     val backStack by nav.currentBackStackEntryAsState()
     val currentRoute = backStack?.destination?.route
     val showBar = TopDestinations.any { it.route == currentRoute }

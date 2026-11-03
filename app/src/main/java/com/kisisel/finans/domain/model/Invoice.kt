@@ -69,3 +69,10 @@ data class InvoiceUpdate(
     val reminderDays: Set<Int>,
     val overdueReminderEveryDays: Int
 )
+
+/** Hatırlatma planlaması için: ödenmemiş dönem + şablonun hatırlatma ayarları. */
+data class ReminderCandidate(
+    val occurrence: InvoiceOccurrence,
+    val reminderDays: Set<Int>,
+    val overdueEveryDays: Int
+)

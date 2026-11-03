@@ -10,6 +10,7 @@ import com.kisisel.finans.data.local.entity.InvoiceTemplateEntity
 import com.kisisel.finans.data.local.entity.PersonEntity
 import com.kisisel.finans.data.local.entity.TransactionEntity
 import com.kisisel.finans.data.mapper.formatReminderDays
+import com.kisisel.finans.data.mapper.parseReminderDays
 import com.kisisel.finans.data.mapper.toDomain
 import com.kisisel.finans.domain.FinanceException
 import com.kisisel.finans.domain.LedgerCalculator
@@ -19,11 +20,13 @@ import com.kisisel.finans.domain.model.InvoiceTemplate
 import com.kisisel.finans.domain.model.InvoiceUpdate
 import com.kisisel.finans.domain.model.NewInvoice
 import com.kisisel.finans.domain.model.OccurrenceStatus
+import com.kisisel.finans.domain.model.ReminderCandidate
 import com.kisisel.finans.domain.model.TransactionType
 import com.kisisel.finans.domain.repository.INVOICE_HORIZON_DAYS
 import com.kisisel.finans.domain.repository.InvoiceRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -208,6 +211,19 @@ class InvoiceRepositoryImpl @Inject constructor(
             val names = people.associate { it.id to it.fullName }
             list.map { it.toDomain(names) }
         }
+
+    override suspend fun getReminderCandidates(): List<ReminderCandidate> {
+        val names = persons.observeAll().first().associate { it.id to it.fullName }
+        return invoices.getAllUnpaid()
+            .filter { it.template.remindersEnabled && it.template.isActive && !it.template.isArchived }
+            .map {
+                ReminderCandidate(
+                    occurrence = it.toDomain(names),
+                    reminderDays = parseReminderDays(it.template.reminderDaysBefore),
+                    overdueEveryDays = it.template.overdueReminderEveryDays
+                )
+            }
+    }
 
     // ---- yardımcılar ----
 
