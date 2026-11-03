@@ -28,6 +28,7 @@ import com.kisisel.finans.ui.persons.PersonDetailScreen
 import com.kisisel.finans.ui.persons.PersonEditScreen
 import com.kisisel.finans.ui.persons.PersonListScreen
 import com.kisisel.finans.ui.placeholder.ComingSoonScreen
+import com.kisisel.finans.ui.settings.SettingsScreen
 import com.kisisel.finans.ui.transactions.TransactionsScreen
 
 @Composable
@@ -128,7 +129,7 @@ fun AppRoot(
                 TransactionsScreen(onOpenPerson = { nav.navigate(Routes.personDetail(it)) })
             }
             composable(Routes.REPORTS) { ComingSoonScreen("Raporlar", 10) }
-            composable(Routes.SETTINGS) { ComingSoonScreen("Ayarlar", 8) }
+            composable(Routes.SETTINGS) { SettingsScreen() }
 
             composable(Routes.PERSON_DETAIL, arguments = personArg) {
                 PersonDetailScreen(

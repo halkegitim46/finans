@@ -1,14 +1,14 @@
 package com.kisisel.finans.data.di
 
 import android.content.Context
-import androidx.room.Room
 import com.kisisel.finans.data.local.KisiselFinansDatabase
-import com.kisisel.finans.data.local.Migrations
+import com.kisisel.finans.data.local.SecureDatabase
 import com.kisisel.finans.data.local.dao.InvoiceDao
 import com.kisisel.finans.data.local.dao.PaymentDao
 import com.kisisel.finans.data.local.dao.PersonDao
 import com.kisisel.finans.data.local.dao.SettingsDao
 import com.kisisel.finans.data.local.dao.TransactionDao
+import com.kisisel.finans.security.DatabaseKeyStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -21,13 +21,13 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
-    /** Şifreleme (SQLCipher + Keystore) 8. aşamada bu fabrikaya eklenecek. */
+    /** SQLCipher ile şifreli veritabanı; anahtar Android Keystore ile sarmalanmış olarak saklanır. */
     @Provides
     @Singleton
-    fun provideDatabase(@ApplicationContext context: Context): KisiselFinansDatabase =
-        Room.databaseBuilder(context, KisiselFinansDatabase::class.java, KisiselFinansDatabase.NAME)
-            .addMigrations(*Migrations.ALL)
-            .build()
+    fun provideDatabase(
+        @ApplicationContext context: Context,
+        keyStore: DatabaseKeyStore
+    ): KisiselFinansDatabase = SecureDatabase.open(context, keyStore.getOrCreateKeyHex())
 
     @Provides fun providePersonDao(db: KisiselFinansDatabase): PersonDao = db.personDao()
     @Provides fun provideTransactionDao(db: KisiselFinansDatabase): TransactionDao = db.transactionDao()

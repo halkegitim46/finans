@@ -6,6 +6,7 @@ import com.kisisel.finans.data.local.dao.InvoiceDao
 import com.kisisel.finans.data.local.dao.PaymentDao
 import com.kisisel.finans.data.local.dao.PersonDao
 import com.kisisel.finans.data.local.dao.SettingsDao
+import com.kisisel.finans.data.local.dao.SnapshotDao
 import com.kisisel.finans.data.local.dao.TransactionDao
 import com.kisisel.finans.data.local.entity.AppSettingEntity
 import com.kisisel.finans.data.local.entity.InvoiceOccurrenceEntity
@@ -32,8 +33,10 @@ abstract class KisiselFinansDatabase : RoomDatabase() {
     abstract fun invoiceDao(): InvoiceDao
     abstract fun paymentDao(): PaymentDao
     abstract fun settingsDao(): SettingsDao
+    abstract fun snapshotDao(): SnapshotDao
 
     companion object {
+        /** Eski (şifresiz) veritabanı dosya adı. Şifreli sürüm için bkz. SecureDatabase.ENC_NAME. */
         const val NAME = "kisisel_finans.db"
     }
 }
