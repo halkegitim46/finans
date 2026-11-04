@@ -21,6 +21,8 @@ class AppLockManager @Inject constructor() {
     @Volatile
     private var settings = SecuritySettings()
     private var backgroundedAt: Long? = null
+    @Volatile
+    private var suppressLockUntil: Long = Long.MIN_VALUE
 
     /** Ayarlar her değiştiğinde Activity tarafından iletilir. İlk iletimde başlangıç durumu belirlenir. */
     fun onSettings(s: SecuritySettings) {
@@ -38,6 +40,14 @@ class AppLockManager @Inject constructor() {
         if (_state.value == LockState.UNLOCKED) _state.value = LockState.LOCKED
     }
 
+    /**
+     * Yedekleme gibi sistem dosya seçicisine gitmeden önce çağrılır. Dönüşteki ilk ön plana geçiş
+     * (en çok 5 dakika içinde) kilitlemez; aksi halde seçici sonucu kilit ekranında kaybolurdu.
+     */
+    fun allowExternalUi(elapsedMillis: Long) {
+        suppressLockUntil = elapsedMillis + EXTERNAL_UI_WINDOW_MS
+    }
+
     fun onBackgrounded(elapsedMillis: Long) {
         backgroundedAt = elapsedMillis
     }
@@ -46,6 +56,11 @@ class AppLockManager @Inject constructor() {
     fun onForegrounded(elapsedMillis: Long) {
         val at = backgroundedAt ?: return
         backgroundedAt = null
+        if (suppressLockUntil >= elapsedMillis) {
+            // Sistem dosya seçicisinden dönüş: bu bir kereye mahsus kilitleme yapılmaz.
+            suppressLockUntil = Long.MIN_VALUE
+            return
+        }
         val s = settings
         if (_state.value == LockState.UNLOCKED &&
             s.passwordRecord != null &&
@@ -54,5 +69,9 @@ class AppLockManager @Inject constructor() {
         ) {
             lock()
         }
+    }
+
+    private companion object {
+        const val EXTERNAL_UI_WINDOW_MS = 5 * 60 * 1000L
     }
 }

@@ -25,4 +25,7 @@ sealed class FinanceException(message: String) : Exception(message) {
     class OccurrenceNotPaid : FinanceException("Bu dönem ödenmiş değil.")
     class OccurrenceNotPayable : FinanceException("İptal edilmiş dönem ödenemez.")
     class AmountRequired : FinanceException("Önce fatura tutarını girin.")
+
+    /** Yedek dosyası/parolası/içeriği ile ilgili kullanıcıya gösterilebilir hata. */
+    class BackupInvalid(message: String) : FinanceException(message)
 }

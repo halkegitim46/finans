@@ -177,9 +177,9 @@ private fun LockScreen(vm: LockViewModel) {
             title = { Text("Parolamı unuttum") },
             text = {
                 Text(
-                    "Parola kurtarılamaz; veriler cihazda şifrelidir. İki yol var:\n\n" +
-                        "1) Daha önce aldığınız şifreli yedekten geri yükleme (yedekleme Aşama 9'da eklenecek).\n" +
-                        "2) Tüm verileri silip baştan başlama."
+                    "Parola kurtarılamaz; veriler cihazda şifrelidir.\n\n" +
+                        "Tüm verileri silip yeni bir parola belirleyebilirsiniz. Daha önce şifreli yedek aldıysanız, " +
+                        "yeni parolayı belirledikten sonra Ayarlar → Yedekleme → Yedekten geri yükle ile verilerinizi geri getirebilirsiniz."
                 )
             },
             confirmButton = {

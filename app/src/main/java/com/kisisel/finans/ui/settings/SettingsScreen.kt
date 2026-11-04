@@ -158,17 +158,14 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                 }
             }
 
+            item { BackupSection(onMessage = vm::showMessage) }
+
             item {
                 Section("Veri") {
                     Text(
                         "Veritabanı AES-256 ile şifrelenir (SQLCipher). Şifreleme anahtarı Android Keystore ile korunur. " +
                             "Hiçbir veri sunucuya gönderilmez.",
                         style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        "Şifreli yedekleme ve geri yükleme Aşama 9'da eklenecek.",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 8.dp)
                     )
                     if (legacyExists) {
                         Card(

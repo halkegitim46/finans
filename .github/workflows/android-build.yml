@@ -32,6 +32,28 @@ jobs:
           fi
           chmod +x gradlew
 
+      # Sabit imza anahtarı: her sürüm eskisinin üstüne VERİ KAYBI OLMADAN kurulabilsin.
+      # Secret tanımlı değilse rastgele debug anahtarı kullanılır (güncellemek için önce eskisini kaldırmak gerekir).
+      - name: İmza anahtarını hazırla
+        env:
+          KFT_KEYSTORE_BASE64: ${{ secrets.KFT_KEYSTORE_BASE64 }}
+          KFT_KEYSTORE_PASSWORD: ${{ secrets.KFT_KEYSTORE_PASSWORD }}
+          KFT_KEY_ALIAS: ${{ secrets.KFT_KEY_ALIAS }}
+          KFT_KEY_PASSWORD: ${{ secrets.KFT_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KFT_KEYSTORE_BASE64" ]; then
+            echo "$KFT_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/kft.jks"
+            {
+              echo "KFT_KEYSTORE_PATH=$RUNNER_TEMP/kft.jks"
+              echo "KFT_KEYSTORE_PASSWORD=$KFT_KEYSTORE_PASSWORD"
+              echo "KFT_KEY_ALIAS=$KFT_KEY_ALIAS"
+              echo "KFT_KEY_PASSWORD=$KFT_KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+            echo "Sabit imza anahtarı kullanılacak."
+          else
+            echo "::warning::KFT_KEYSTORE_BASE64 secret tanımlı değil. APK rastgele debug anahtarıyla imzalanacak; güncellemek için eski sürümü kaldırmanız gerekir."
+          fi
+
       # Her derlemede sürüm numarasını (run_number) 1 artırır
       - name: Sürüm numaralarını güncelle
         run: |
@@ -83,6 +105,26 @@ jobs:
       # Birim testleri APK'dan sonra çalışır; hata olursa job kırmızı olur ama APK zaten yüklenmiştir.
       - name: Birim testleri
         run: ./gradlew testDebugUnitTest --no-daemon --stacktrace
+
+      - name: Başarısız testleri özetle
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import glob
+          import xml.etree.ElementTree as ET
+          files = sorted(glob.glob("app/build/test-results/testDebugUnitTest/*.xml"))
+          if not files:
+              print("Test sonuç dosyası yok: büyük olasılıkla test kodu derlenemedi. Log'daki 'e:' satırlarına bakın.")
+          failed = 0
+          for f in files:
+              for case in ET.parse(f).getroot().iter("testcase"):
+                  for tag in ("failure", "error"):
+                      for e in case.findall(tag):
+                          failed += 1
+                          print("BASARISIZ:", case.get("classname") + "." + case.get("name"))
+                          print("   ", (e.get("message") or "")[:400].replace("\n", " "))
+          print("Toplam başarısız test:", failed)
+          PY
 
       - name: Test raporunu yükle
         if: always()

@@ -13,5 +13,8 @@ interface PersonRepository {
     suspend fun getById(id: Long): Person?
     fun observeActive(): Flow<List<Person>>
     fun observeArchived(): Flow<List<Person>>
+
+    /** Arşivlenenler dahil tüm kişiler (raporlar için). */
+    fun observeAll(): Flow<List<Person>>
     fun search(query: String): Flow<List<Person>>
 }

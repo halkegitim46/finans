@@ -109,6 +109,15 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions ORDER BY transactionDate DESC, id DESC")
     fun observeAll(): Flow<List<TransactionEntity>>
 
+    @Query(
+        "SELECT t.*, COALESCE((SELECT SUM(p.amountKurus) FROM payments p " +
+            "INNER JOIN transactions s ON s.id = p.settlementTxId " +
+            "WHERE p.claimTxId = t.id AND s.isCancelled = 0), 0) AS allocatedKurus " +
+            "FROM transactions t WHERE t.isCancelled = 0 " +
+            "AND t.type IN ('LEND', 'PAID_ON_BEHALF', 'BORROW') ORDER BY t.transactionDate, t.id"
+    )
+    fun observeAllClaims(): Flow<List<ClaimWithAllocated>>
+
     /** Faturadan doğan aktif (iptal edilmemiş) ödeme kaydı. */
     @Query("SELECT * FROM transactions WHERE occurrenceId = :occurrenceId AND isCancelled = 0 LIMIT 1")
     suspend fun getActiveByOccurrence(occurrenceId: Long): TransactionEntity?

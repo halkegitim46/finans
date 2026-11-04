@@ -81,4 +81,26 @@ class AppLockManagerTest {
         m2.lock()
         assertEquals(LockState.LOCKED, m2.state.value)
     }
+
+    @Test fun externalUiSkipsExactlyOneLock() {
+        val m = manager(withPassword.copy(lockTimeoutSeconds = 0))
+        m.onUnlocked()
+        m.allowExternalUi(1_000)
+        m.onBackgrounded(2_000)          // dosya seçici açıldı
+        m.onForegrounded(9_000)          // geri dönüldü: kilitlenmez
+        assertEquals(LockState.UNLOCKED, m.state.value)
+
+        m.onBackgrounded(10_000)         // gerçek arka plan: kilitlenir
+        m.onForegrounded(10_001)
+        assertEquals(LockState.LOCKED, m.state.value)
+    }
+
+    @Test fun externalUiExemptionExpiresAfterFiveMinutes() {
+        val m = manager(withPassword.copy(lockTimeoutSeconds = 0))
+        m.onUnlocked()
+        m.allowExternalUi(0)
+        m.onBackgrounded(1_000)
+        m.onForegrounded(5 * 60 * 1000L + 1)   // süre doldu
+        assertEquals(LockState.LOCKED, m.state.value)
+    }
 }

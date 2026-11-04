@@ -1,5 +1,6 @@
 package com.kisisel.finans.domain.repository
 
+import com.kisisel.finans.domain.model.ClaimLine
 import com.kisisel.finans.domain.model.DashboardTotals
 import com.kisisel.finans.domain.model.LedgerEntry
 import com.kisisel.finans.domain.model.LedgerLine
@@ -34,4 +35,7 @@ interface LedgerRepository {
 
     /** Son girilen işlemler (kayıt zamanına göre). */
     fun observeRecentLines(limit: Int): Flow<List<LedgerLine>>
+
+    /** İptal edilmemiş tüm alacak/borç doğuran işlemler ve kalan (açık) tutarları. */
+    fun observeClaims(): Flow<List<ClaimLine>>
 }

@@ -20,6 +20,13 @@ interface SnapshotDao {
     @Query("SELECT * FROM payments ORDER BY id") suspend fun payments(): List<PaymentEntity>
     @Query("SELECT * FROM app_settings ORDER BY settingKey") suspend fun settings(): List<AppSettingEntity>
 
+    @Query("DELETE FROM payments") suspend fun deletePayments()
+    @Query("DELETE FROM transactions") suspend fun deleteTransactions()
+    @Query("DELETE FROM invoice_occurrences") suspend fun deleteInvoiceOccurrences()
+    @Query("DELETE FROM invoice_templates") suspend fun deleteInvoiceTemplates()
+    @Query("DELETE FROM persons") suspend fun deletePersons()
+    @Query("DELETE FROM app_settings") suspend fun deleteSettings()
+
     @Insert suspend fun insertPersons(items: List<PersonEntity>)
     @Insert suspend fun insertInvoiceTemplates(items: List<InvoiceTemplateEntity>)
     @Insert suspend fun insertInvoiceOccurrences(items: List<InvoiceOccurrenceEntity>)

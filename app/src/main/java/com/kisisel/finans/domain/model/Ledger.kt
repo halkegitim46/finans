@@ -85,3 +85,20 @@ data class SettlementResult(
 
 /** Defter satırı + kişi adı (İşlemler ve Ana Sayfa listeleri için). */
 data class LedgerLine(val entry: LedgerEntry, val personName: String)
+
+/** Alacak/borç doğuran bir işlem ve kendisine dağıtılan tahsilat/ödeme toplamı (vade raporları için). */
+data class ClaimLine(
+    val entryId: Long,
+    val personId: Long,
+    val personName: String,
+    val type: TransactionType,
+    val amountKurus: Long,
+    val allocatedKurus: Long,
+    val date: LocalDate,
+    val dueDate: LocalDate?,
+    /** Doluysa işlem bir fatura ödemesinden doğmuştur (vadesi fatura vadesidir, kişinin geri ödeme vadesi değildir). */
+    val occurrenceId: Long?,
+    val description: String
+) {
+    val openKurus: Long get() = amountKurus - allocatedKurus
+}

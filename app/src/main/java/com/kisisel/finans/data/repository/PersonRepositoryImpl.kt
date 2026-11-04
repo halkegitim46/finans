@@ -56,6 +56,8 @@ class PersonRepositoryImpl @Inject constructor(
 
     override fun observeArchived(): Flow<List<Person>> = dao.observeArchived().map { l -> l.map { it.toDomain() } }
 
+    override fun observeAll(): Flow<List<Person>> = dao.observeAll().map { l -> l.map { it.toDomain() } }
+
     override fun search(query: String): Flow<List<Person>> =
         dao.search(query.trim()).map { l -> l.map { it.toDomain() } }
 }

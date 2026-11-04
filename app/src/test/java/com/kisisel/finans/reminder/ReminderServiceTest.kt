@@ -43,7 +43,7 @@ private class FakeNotifier : ReminderNotifier {
 }
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+@Config(sdk = [34], application = android.app.Application::class)
 class ReminderServiceTest {
 
     private lateinit var db: KisiselFinansDatabase

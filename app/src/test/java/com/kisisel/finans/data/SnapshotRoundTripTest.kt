@@ -34,7 +34,7 @@ import java.time.ZoneId
 
 /** Şifreli veritabanına geçiş ve yedekleme için kullanılan tam kopya mekanizmasının testi. */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+@Config(sdk = [34], application = android.app.Application::class)
 class SnapshotRoundTripTest {
 
     private lateinit var source: KisiselFinansDatabase

@@ -2,6 +2,7 @@ package com.kisisel.finans.data.repository
 
 import androidx.room.withTransaction
 import com.kisisel.finans.core.toDb
+import com.kisisel.finans.core.toLocalDate
 import com.kisisel.finans.data.local.KisiselFinansDatabase
 import com.kisisel.finans.data.local.dao.ClaimWithAllocated
 import com.kisisel.finans.data.local.entity.PaymentEntity
@@ -10,6 +11,7 @@ import com.kisisel.finans.data.local.entity.TransactionEntity
 import com.kisisel.finans.data.mapper.toDomain
 import com.kisisel.finans.domain.FinanceException
 import com.kisisel.finans.domain.LedgerCalculator
+import com.kisisel.finans.domain.model.ClaimLine
 import com.kisisel.finans.domain.model.DashboardTotals
 import com.kisisel.finans.domain.model.LedgerEntry
 import com.kisisel.finans.domain.model.LedgerLine
@@ -195,6 +197,25 @@ class LedgerRepositoryImpl @Inject constructor(
 
     override fun observeRecentLines(limit: Int): Flow<List<LedgerLine>> =
         combine(transactions.observeRecent(limit), persons.observeAll()) { txs, people -> toLines(txs, people) }
+
+    override fun observeClaims(): Flow<List<ClaimLine>> =
+        combine(transactions.observeAllClaims(), persons.observeAll()) { claims, people ->
+            val names = people.associate { it.id to it.fullName }
+            claims.map { c ->
+                ClaimLine(
+                    entryId = c.tx.id,
+                    personId = c.tx.personId,
+                    personName = names[c.tx.personId].orEmpty(),
+                    type = c.tx.type,
+                    amountKurus = c.tx.amountKurus,
+                    allocatedKurus = c.allocatedKurus,
+                    date = c.tx.transactionDate.toLocalDate(),
+                    dueDate = c.tx.dueDate?.toLocalDate(),
+                    occurrenceId = c.tx.occurrenceId,
+                    description = c.tx.description
+                )
+            }
+        }
 
     private fun toLines(txs: List<TransactionEntity>, people: List<PersonEntity>): List<LedgerLine> {
         val names = people.associate { it.id to it.fullName }

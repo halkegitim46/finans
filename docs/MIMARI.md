@@ -118,3 +118,31 @@ Kilit/Kurulum → Ana Sayfa | Kişiler (liste→detay) | Faturalar (liste→deta
 - **Ekran koruması**: FLAG_SECURE (varsayılan açık): ekran görüntüsü ve son uygulamalar önizlemesi engellenir.
 - **Loglar**: parola/PIN/tutar loglanmaz; beklenmeyen hatalarda ayrıntı gösterilmez.
 - Kapsam dışı/sonraki: yedek dosyası şifreleme (Aşama 9). Yedek için dosya seçici açılınca uygulama arka plana gidebilir; Aşama 9'da kısa süreli kilit istisnası eklenecek.
+
+## Aşama 9 – Şifreli yedekleme
+- **Akış (yedek al)**: veritabanı snapshot → JSON → gzip → AES-256-GCM (ayrı **yedek parolası**, PBKDF2-HMAC-SHA256 600.000 iterasyon)
+  → kullanıcının seçtiği dosyaya (Android Storage Access Framework; depolama izni gerekmez, ağ erişimi yok).
+- **Dosya düzeni**: `KFTB | sürüm | iterasyon | tuz(16) | nonce(12) | anahtar kontrolü(8) | şifreli veri + GCM etiketi`.
+  Başlık GCM'de AAD olarak korunur. Anahtar kontrolü yanlış parolayı "bozuk dosya"dan ayırır.
+- **Veri bütünlüğü**: GCM etiketi (değişiklik/bozulma), JSON'da biçim + sürüm + kayıt sayıları doğrulaması, gzip boyut sınırı (64 MB).
+- **Geri yükleme (iki aşama)**: dosya seç → yedek parolası → çöz + doğrula (veri değişmez) → özet (tarih, kayıt sayıları) → onay →
+  mevcut TÜM veriler tek transaction'da silinip yedek yüklenir. Hata olursa (ör. tutarsız yabancı anahtar) önceki veriler olduğu gibi kalır.
+- **Uyumluluk**: yedeğin veritabanı sürümü uygulamanınkinden yeniyse reddedilir; eskiyse (ileride migration) kabul edilecek şekilde tasarlandı.
+- **Kilit**: dosya seçici uygulamayı arka plana attığından, seçiciye gitmeden önce `allowExternalUi` çağrılır; dönüşte BİR kez (en çok 5 dk) kilitlenmez.
+- **Son yedek bilgisi**: tarih, dosya adı, boyut, kayıt sayıları (içerik değil) DataStore'da.
+- **Unutulan uygulama parolası**: Ayarlar'dan veya kilit ekranından verileri silip yeni parola belirle → Ayarlar → Yedekleme → Yedekten geri yükle.
+- Yedek dosyası uygulama dışına çıktığı için güvenliği YEDEK PAROLASINA bağlıdır: güçlü ve ayrı bir parola kullanın, parolayı yedekten ayrı saklayın.
+
+## Aşama 10 – Raporlar
+- **Hesap**: `ReportCalculator` saf fonksiyonlar (kuruş/Long). İptal edilen işlemler hiçbir rapora girmez.
+- **Aralık**: Bu ay, geçen ay, son 3 ay, bu yıl, geçen yıl veya özel (başlangıç/bitiş dahil). Önceki dönem: tam ay → önceki ay,
+  tam yıl → önceki yıl, diğerleri → aynı uzunlukta hemen önceki aralık.
+- **Özet**: alacak oluşan (borç verme + kişi adına ödeme), tahsilat, borç oluşan, borç ödemesi, net değişim; önceki dönemle fark ve yüzde
+  (yüzde yalnızca gösterim); aylık seri (en çok 36 ay) ve yıllık seri; iki grafik (alacak/tahsilat, borç/ödeme).
+- **Kişi dökümü**: dönem başı bakiye (başlangıç bakiyesi + önceki hareketler), yürüyen bakiyeli hareketler, dönem sonu bakiye. + = kişi bana borçlu.
+- **Fatura geçmişi**: ödeme tarihi aralıkta olan dönemler, fatura başına toplam ve dönem listesi.
+- **Tahsilat geçmişi**: aralıktaki tahsilatlar ve toplam.
+- **Bekleyen**: bugün itibarıyla geciken ve bekleyen faturalar + vadesi olan açık alacak/borçlar. Faturadan doğan alacaklar (vade = fatura vadesi) dahil edilmez.
+- **Grafik**: harici kütüphane yok; Compose ile gruplanmış sütun grafiği, erişilebilirlik açıklamalı, altında tam tutarlı tablo.
+- **CSV**: Excel (TR) uyumlu: `;` ayraç, ondalık `,`, binlik ayracı yok, UTF-8 BOM, CRLF; formül enjeksiyonuna karşı `=+-@` ile başlayan metne `'` eklenir.
+  Dışa aktarmadan önce "dosya şifrelenmez" uyarısı. Dosya seçici için kilit istisnası (Aşama 9'daki mekanizma).

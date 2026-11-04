@@ -53,4 +53,22 @@ object DatabaseSnapshotter {
             d.insertSettings(s.settings)
         }
     }
+
+    /**
+     * Mevcut TÜM verileri siler ve snapshot'ı yükler; hepsi tek transaction'da.
+     * Hata olursa (ör. tutarsız yabancı anahtar) önceki veriler olduğu gibi kalır.
+     * Silme sırası yabancı anahtar kısıtlarına uygundur (RESTRICT): ödeme → işlem → dönem → şablon → kişi.
+     */
+    suspend fun replaceAll(db: KisiselFinansDatabase, s: DatabaseSnapshot) {
+        db.withTransaction {
+            val d = db.snapshotDao()
+            d.deletePayments()
+            d.deleteTransactions()
+            d.deleteInvoiceOccurrences()
+            d.deleteInvoiceTemplates()
+            d.deletePersons()
+            d.deleteSettings()
+            import(db, s)
+        }
+    }
 }

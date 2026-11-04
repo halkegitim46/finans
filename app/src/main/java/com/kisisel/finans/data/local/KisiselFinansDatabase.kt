@@ -24,7 +24,7 @@ import com.kisisel.finans.data.local.entity.TransactionEntity
         PaymentEntity::class,
         AppSettingEntity::class
     ],
-    version = 1,
+    version = KisiselFinansDatabase.VERSION,
     exportSchema = true
 )
 abstract class KisiselFinansDatabase : RoomDatabase() {
@@ -38,5 +38,8 @@ abstract class KisiselFinansDatabase : RoomDatabase() {
     companion object {
         /** Eski (şifresiz) veritabanı dosya adı. Şifreli sürüm için bkz. SecureDatabase.ENC_NAME. */
         const val NAME = "kisisel_finans.db"
+
+        /** Room şema sürümü; yedek dosyalarının uyumluluk kontrolünde de kullanılır. */
+        const val VERSION = 1
     }
 }
