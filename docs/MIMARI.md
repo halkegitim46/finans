@@ -146,3 +146,24 @@ Kilit/Kurulum → Ana Sayfa | Kişiler (liste→detay) | Faturalar (liste→deta
 - **Grafik**: harici kütüphane yok; Compose ile gruplanmış sütun grafiği, erişilebilirlik açıklamalı, altında tam tutarlı tablo.
 - **CSV**: Excel (TR) uyumlu: `;` ayraç, ondalık `,`, binlik ayracı yok, UTF-8 BOM, CRLF; formül enjeksiyonuna karşı `=+-@` ile başlayan metne `'` eklenir.
   Dışa aktarmadan önce "dosya şifrelenmez" uyarısı. Dosya seçici için kilit istisnası (Aşama 9'daki mekanizma).
+
+## Aşama 11 – Sertleştirme ve teslimat
+- **Gün değişimi**: `DayTicker` ("bugün" tek kaynağı) uygulama ön plana gelince yenilenir; ana sayfa, faturalar ve raporlar (hazır dönemler dahil) gün/ay değişince yeniden hesaplanır.
+- **Release**: ayrı `release.yml` (elle): secret zorunlu, testler geçmeden üretmez, `apksigner` doğrulaması, R8 `mapping` artifact'ı, `minify` anahtarı.
+  Debug ve release aynı sabit anahtarı kullanır (güncelleme veri kaybı olmadan). `generate-keystore.yml` yalnızca özel depoda, tek seferlik.
+- **Testler**: `LegacyMigrationTest` (şifresiz → şifreli veri taşıma, hedef dolu/yok/başarı senaryoları), `MigrationsTest` (şema sürümü artınca eksik migration'ı yakalar), `DayTickerTest`.
+- **ABI**: arm64-v8a, armeabi-v7a, x86_64 (SQLCipher yerel kütüphaneleri). **Tema**: grafik serileri için ayrı üçüncül renk (açık/koyu).
+
+### Şartname uyumu (özet)
+| Şartname maddesi | Durum |
+|---|---|
+| Kotlin, Compose, Material 3, MVVM + Clean, Room, Flow, Hilt, WorkManager, DataStore, Keystore, Biometric, Navigation | Tamam |
+| "Modüler" yapı | Tek Gradle modülü + paket bazlı katmanlar (kasıtlı sadelik) |
+| Para: kuruş, Float/Double yok | Tamam (grafik çubuk oranı yalnızca görsel) |
+| Kişi/alacak-borç/fatura/ödeme-tahsilat ilişkisi, kısmi işlemler, iptal/arşiv | Tamam |
+| Bildirimler (7/3/1/vade/geciken, dokununca açılış, yeniden başlatma, izin, pil) | Tamam; cihazda elle doğrulanmalı |
+| Raporlar + grafik + dışa aktarma | Tamam; Excel yerine CSV |
+| Güvenlik: parola, PIN, biyometrik, arka plan kilidi, şifreli DB, Keystore, şifreli yedek, log'da hassas veri yok | Tamam |
+| Yedek: manuel, dışa aktarma, geri yükleme, tarih/dosya bilgisi, bütünlük, bozuk dosya hatası | Tamam |
+| Testler (finansal hesap, kısmi ödeme/tahsilat, fatura, tekrar, bildirim planlama, yedek, kilit, migration, hatalı girişler) | Birim/Robolectric testleri tamam; arayüz ve cihaz testleri yok |
+| Derlenebilir, telefona kurulabilir APK | GitHub Actions ile (debug ve imzalı release) |

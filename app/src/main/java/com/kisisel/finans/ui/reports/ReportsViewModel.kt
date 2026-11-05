@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kisisel.finans.core.DayTicker
 import com.kisisel.finans.domain.model.LedgerLine
 import com.kisisel.finans.domain.repository.InvoiceRepository
 import com.kisisel.finans.domain.repository.LedgerRepository
@@ -34,9 +35,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.Clock
 import java.time.LocalDate
 import javax.inject.Inject
 
@@ -73,14 +72,18 @@ class ReportsViewModel @Inject constructor(
     ledger: LedgerRepository,
     invoices: InvoiceRepository,
     private val lockManager: AppLockManager,
-    clock: Clock
+    private val dayTicker: DayTicker
 ) : ViewModel() {
 
-    private val today: LocalDate = LocalDate.now(clock)
+    private val preset = MutableStateFlow(RangePreset.THIS_MONTH)
+    private val custom = MutableStateFlow<DateRange?>(null)
 
-    private val selection = MutableStateFlow(
-        RangePreset.THIS_MONTH to (RangePreset.THIS_MONTH.range(today) ?: DateRange(today, today))
-    )
+    private data class Selection(val preset: RangePreset, val range: DateRange, val today: LocalDate)
+
+    /** Hazır dönemler (bu ay, bu yıl…) gün/ay değişince kendiliğinden kayar; özel aralık sabit kalır. */
+    private val selection = combine(preset, custom, dayTicker.today) { p, c, t ->
+        Selection(p, p.range(t) ?: c ?: DateRange(t, t), t)
+    }
 
     val state: StateFlow<ReportsState> = combine(
         persons.observeAll(),
@@ -88,14 +91,15 @@ class ReportsViewModel @Inject constructor(
         invoices.observeOccurrences(),
         ledger.observeClaims(),
         selection
-    ) { people, lines, occurrences, claims, (preset, range) ->
+    ) { people, lines, occurrences, claims, sel ->
+        val range = sel.range
         val previous = range.previous()
         val summary = ReportCalculator.periodSummary(lines, range)
         val previousSummary = ReportCalculator.periodSummary(lines, previous)
         val collections = ReportCalculator.collections(lines, range)
         ReportsState(
-            today = today,
-            preset = preset,
+            today = sel.today,
+            preset = sel.preset,
             range = range,
             previousRange = previous,
             summary = summary,
@@ -107,36 +111,41 @@ class ReportsViewModel @Inject constructor(
             collections = collections,
             collectionsTotal = ReportCalculator.collectionsTotal(collections),
             invoiceHistory = ReportCalculator.invoiceHistory(occurrences, range),
-            pending = ReportCalculator.pending(occurrences, claims, today),
+            pending = ReportCalculator.pending(occurrences, claims, sel.today),
             loaded = true
         )
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initialState())
 
     private fun initialState(): ReportsState {
-        val r = selection.value.second
+        val today = dayTicker.today.value
+        val r = RangePreset.THIS_MONTH.range(today) ?: DateRange(today, today)
         val empty = PeriodSummary(0, 0, 0, 0, 0, 0)
         return ReportsState(
-            today, selection.value.first, r, r.previous(), empty, empty, emptyList(), emptyList(), emptyList(),
+            today, RangePreset.THIS_MONTH, r, r.previous(), empty, empty, emptyList(), emptyList(), emptyList(),
             emptyList(), emptyList(), 0, emptyList(),
             PendingReport(emptyList(), emptyList(), 0, 0, 0, 0, 0), loaded = false
         )
     }
 
     // ---- aralık seçimi ----
-    fun onPreset(preset: RangePreset) {
-        val range = preset.range(today) ?: selection.value.second
-        selection.value = preset to range
+    fun onPreset(p: RangePreset) {
+        if (p == RangePreset.CUSTOM && custom.value == null) custom.value = state.value.range
+        preset.value = p
     }
 
-    fun onCustomStart(epochDay: Long) = selection.update { (_, r) ->
+    fun onCustomStart(epochDay: Long) {
+        val r = state.value.range
         val s = LocalDate.ofEpochDay(epochDay)
-        RangePreset.CUSTOM to DateRange(s, maxOf(s, r.end))
+        custom.value = DateRange(s, maxOf(s, r.end))
+        preset.value = RangePreset.CUSTOM
     }
 
-    fun onCustomEnd(epochDay: Long) = selection.update { (_, r) ->
+    fun onCustomEnd(epochDay: Long) {
+        val r = state.value.range
         val e = LocalDate.ofEpochDay(epochDay)
-        RangePreset.CUSTOM to DateRange(minOf(r.start, e), e)
+        custom.value = DateRange(minOf(r.start, e), e)
+        preset.value = RangePreset.CUSTOM
     }
 
     // ---- CSV dışa aktarma ----

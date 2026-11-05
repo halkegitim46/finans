@@ -19,6 +19,7 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         resourceConfigurations += "tr"
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }   // SQLCipher yerel kütüphaneleri
     }
 
     // Sabit imza anahtarı (CI'da GitHub Secrets'tan gelir). Aynı anahtar = her sürüm eskisinin üstüne veri kaybı olmadan kurulur.
@@ -39,9 +40,12 @@ android {
             if (System.getenv("KFT_KEYSTORE_PATH") != null) signingConfig = signingConfigs.getByName("shared")
         }
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            // R8 küçültme varsayılan açık; sorun çıkarsa -Pkft.minify=false ile kapatılabilir.
+            val minify = (project.findProperty("kft.minify") as String?) != "false"
+            isMinifyEnabled = minify
+            isShrinkResources = minify
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (System.getenv("KFT_KEYSTORE_PATH") != null) signingConfig = signingConfigs.getByName("shared")
         }
     }
 

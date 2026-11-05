@@ -95,6 +95,12 @@ jobs:
           echo "NEW_APK_PATH=$NEW_PATH" >> "$GITHUB_OUTPUT"
           echo "NEW_APK_NAME=$NEW_NAME" >> "$GITHUB_OUTPUT"
 
+      - name: İmza parmak izini yazdır
+        continue-on-error: true
+        run: |
+          APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner
+          "$APKSIGNER" verify --print-certs "${{ steps.rename_apk.outputs.NEW_APK_PATH }}" | grep -E "Signer #1 certificate (DN|SHA-256)"
+
       - name: APK'yı yükle
         uses: actions/upload-artifact@v6
         with:

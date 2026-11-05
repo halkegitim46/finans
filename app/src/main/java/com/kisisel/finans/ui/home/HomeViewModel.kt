@@ -2,6 +2,7 @@ package com.kisisel.finans.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kisisel.finans.core.DayTicker
 import com.kisisel.finans.domain.model.DashboardTotals
 import com.kisisel.finans.domain.model.InvoiceOccurrence
 import com.kisisel.finans.domain.model.LedgerLine
@@ -14,11 +15,12 @@ import com.kisisel.finans.domain.usecase.RecordClaimUseCase
 import com.kisisel.finans.domain.usecase.RecordSettlementUseCase
 import com.kisisel.finans.ui.common.launchCatching
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
-import java.time.Clock
 import java.time.LocalDate
 import javax.inject.Inject
 
@@ -32,6 +34,7 @@ data class HomeState(
     val loaded: Boolean = false
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     ledger: LedgerRepository,
@@ -39,34 +42,35 @@ class HomeViewModel @Inject constructor(
     private val recordClaim: RecordClaimUseCase,
     private val recordSettlement: RecordSettlementUseCase,
     private val ensureOccurrences: EnsureOccurrencesUseCase,
-    clock: Clock
+    private val dayTicker: DayTicker
 ) : ViewModel() {
 
-    private val today: LocalDate = LocalDate.now(clock)
-
-    val state: StateFlow<HomeState> = combine(
-        ledger.observeDashboard(today),
-        invoices.observeOccurrences(),
-        ledger.observeRecentLines(RECENT_LIMIT),
-        ledger.observePersonSummaries()
-    ) { totals, occurrences, recent, persons ->
-        val split = splitInvoices(occurrences, today)
-        HomeState(
-            today = today,
-            totals = totals,
-            overdue = split.overdue,
-            upcoming = split.upcoming,
-            recent = recent,
-            persons = persons,
-            loaded = true
-        )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeState(today))
+    /** Gün değişince (ay toplamları, geciken/yaklaşan faturalar dahil) yeniden hesaplanır. */
+    val state: StateFlow<HomeState> = dayTicker.today.flatMapLatest { today ->
+        combine(
+            ledger.observeDashboard(today),
+            invoices.observeOccurrences(),
+            ledger.observeRecentLines(RECENT_LIMIT),
+            ledger.observePersonSummaries()
+        ) { totals, occurrences, recent, persons ->
+            val split = splitInvoices(occurrences, today)
+            HomeState(
+                today = today,
+                totals = totals,
+                overdue = split.overdue,
+                upcoming = split.upcoming,
+                recent = recent,
+                persons = persons,
+                loaded = true
+            )
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeState(dayTicker.today.value))
 
     init {
         launchCatching { ensureOccurrences() }
     }
 
-    fun today(): LocalDate = today
+    fun today(): LocalDate = dayTicker.today.value
 
     /** Hızlı işlem: borç verme/alma, kişi adına ödeme, tahsilat, borç ödeme. */
     fun submit(

@@ -87,7 +87,8 @@ class SnapshotRoundTripTest {
     @Test fun exportImportReproducesEverything() = runDb {
         populate()
         val snapshot = DatabaseSnapshotter.export(source)
-        assertTrue(snapshot.totalRows > 10)
+        // 2 kişi + 1 fatura şablonu + 2 dönem + 4 işlem + 1 ödeme dağıtımı = 10 satır
+        assertEquals(10, snapshot.totalRows)
         assertTrue(snapshot.payments.isNotEmpty())
         assertTrue(snapshot.transactions.any { it.isCancelled })
         assertTrue(snapshot.persons.any { it.isArchived })

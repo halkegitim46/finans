@@ -17,6 +17,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.kisisel.finans.core.DayTicker
 import com.kisisel.finans.reminder.EXTRA_OCCURRENCE_ID
 import com.kisisel.finans.security.AppLockManager
 import com.kisisel.finans.security.SecurityStore
@@ -33,6 +34,7 @@ class MainActivity : FragmentActivity() {
 
     @Inject lateinit var lockManager: AppLockManager
     @Inject lateinit var securityStore: SecurityStore
+    @Inject lateinit var dayTicker: DayTicker
 
     /** Bildirime dokunulunca açılacak fatura dönemi. Uygulama kilitliyse kilit açılana kadar bekler. */
     private var pendingOccurrence by mutableStateOf<Long?>(null)
@@ -72,6 +74,7 @@ class MainActivity : FragmentActivity() {
     override fun onStart() {
         super.onStart()
         lockManager.onForegrounded(SystemClock.elapsedRealtime())
+        dayTicker.refresh()   // gece yarısı geçtiyse ekranlar yeniden hesaplanır
     }
 
     override fun onStop() {
