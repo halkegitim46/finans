@@ -48,7 +48,9 @@ Ana Sayfa: net bakiye, toplam alacak/borç, bu ay ödemeler ve tahsilatlar, geci
 ## 7. Raporlar
 Dönem seçin (bu ay, geçen ay, son 3 ay, bu yıl, geçen yıl, özel aralık). Sekmeler: **Özet** (karşılaştırma, aylık/yıllık, grafikler),
 **Kişiler** (dönem başı/sonu bakiye ve hareketler), **Faturalar** (ödeme geçmişi), **Tahsilat**, **Bekleyen** (geciken ve ödenmemiş).
-Sağ üstteki indirme düğmesi geçerli sekmeyi **CSV** olarak kaydeder (Excel'de açılır). CSV **şifrelenmez**; güvenli bir yere kaydedin.
+Sağ üstteki indirme düğmesi geçerli sekmeyi **PDF** (yazdırılabilir, sayfa numaralı) veya **CSV** (Excel'de açılır) olarak kaydeder.
+**Kişiler** sekmesinde her kişinin kartında "Bu kişinin dökümünü PDF olarak kaydet" düğmesi vardır; üst menüden PDF seçerseniz tüm kişiler tek dosyada olur.
+Dosya adı örneği: `KFT_Hesap_Cagla_Ozturk_2026-11-01_2026-11-30.pdf`. PDF ve CSV dosyaları **şifrelenmez**; paylaşırken dikkatli olun.
 
 ## 8. Güvenlik (Ayarlar)
 Parolayı değiştirme, PIN, parmak izi/yüz, arka plana geçince kilitleme ve süresi, ekran görüntüsü engeli, "Şimdi kilitle".

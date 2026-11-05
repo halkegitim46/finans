@@ -12,7 +12,7 @@ Kullanım için: [`docs/KULLANIM_KILAVUZU.md`](docs/KULLANIM_KILAVUZU.md) · Mim
   her dönem ayrı kayıt; fatura ödenince kişinin alacağına eklenir.
 - **Hatırlatmalar** (WorkManager): vadeden 7/3/1 gün önce, vade günü ve geciken faturalar için; bildirime dokununca fatura açılır.
 - **Raporlar**: aylık/yıllık özet, önceki dönemle karşılaştırma, kişi dökümü, fatura ödeme geçmişi, tahsilat geçmişi,
-  geciken/ödenmemiş kalemler; grafikler; CSV (Excel) dışa aktarma.
+  geciken/ödenmemiş kalemler; grafikler; **PDF** (açık sekme; Kişiler sekmesinde tek kişinin hesap dökümü) ve CSV (Excel) dışa aktarma.
 - **Güvenlik**: uygulama parolası (PBKDF2), PIN, biyometrik, arka planda kilit, ekran görüntüsü engeli, AES-256 şifreli veritabanı.
 - **Yedekleme**: ayrı parolayla AES-256-GCM şifreli yedek; doğrulamalı, geri alınabilir (atomik) geri yükleme. Hiçbir veri sunucuya gönderilmez.
 
@@ -60,7 +60,8 @@ Telefonda APK'yı açarken "bilinmeyen kaynak" izni ve Play Protect "yine de yü
 - Tek kullanıcı, tek cihaz, yalnızca Türk lirası ve Türkçe.
 - **Parola kurtarılamaz.** Kurtarma yolu: önceden alınmış şifreli yedek veya verileri silip baştan başlama. Düzenli yedek alın.
 - Cihaz sıfırlanırsa veya Keystore anahtarı kaybolursa veritabanı açılamaz; yedek bu yüzden şart. (Anahtar bozuksa uygulama açılışta hata verebilir; çözüm: yedekten geri yükleme için verileri sıfırlamak.)
-- Yedekleme manueldir; otomatik/zamanlanmış yedek yok. Dışa aktarma: Excel yerine CSV.
+- Yedekleme manueldir; otomatik/zamanlanmış yedek yok. Dışa aktarma: Excel yerine CSV; PDF ve CSV dosyaları şifrelenmez.
+- PDF, Android'in yerleşik çizicisiyle üretilir (A4, sistem yazı tipi); sayfa görünümü cihazda elle kontrol edilmelidir.
 - Hatırlatmalar yaklaşık 09:00'da, Android pil tasarrufuna göre gecikebilir; yalnızca seçilen "tam gün"ler bildirilir (telefon bir gün kapalıysa o günün 7/3/1 hatırlatması sonradan gönderilmez).
 - Uygulama açıkken gece yarısı geçerse ekranlar, uygulama arka plana alınıp tekrar açılınca güncellenir.
 - Tutar girişinde `1.500` binlik ayraç, `1.5` ondalık olarak yorumlanır; `1.500,50` ve `1500,50` biçimleri güvenlidir.

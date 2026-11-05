@@ -39,22 +39,29 @@ import java.util.Locale
 @Composable
 fun ReportsScreen(vm: ReportsViewModel = hiltViewModel()) {
     val s by vm.state.collectAsStateWithLifecycle()
-    val exportName by vm.exportNameState.collectAsStateWithLifecycle()
+    val exportRequest by vm.exportRequestState.collectAsStateWithLifecycle()
+    var exportMenuOpen by remember { mutableStateOf(false) }
     var tabIndex by rememberSaveable { mutableIntStateOf(0) }
     var confirmExport by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val tab = ReportTab.entries[tabIndex]
 
-    val createLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+    val csvLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        vm.onExportUri(uri)
+    }
+    val pdfLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
         vm.onExportUri(uri)
     }
     LaunchedEffect(Unit) { vm.messages.collect { snackbar.showSnackbar(it) } }
-    LaunchedEffect(exportName) {
-        val name = exportName
-        if (name != null) {
+    LaunchedEffect(exportRequest) {
+        val request = exportRequest
+        if (request != null) {
             vm.allowExternalUi()
             vm.exportLaunched()
-            createLauncher.launch(name)
+            when (request.kind) {
+                ExportKind.CSV -> csvLauncher.launch(request.name)
+                ExportKind.PDF -> pdfLauncher.launch(request.name)
+            }
         }
     }
 
@@ -65,8 +72,18 @@ fun ReportsScreen(vm: ReportsViewModel = hiltViewModel()) {
             TopAppBar(
                 title = { Text("Raporlar") },
                 actions = {
-                    IconButton(onClick = { confirmExport = true }) {
-                        Icon(Icons.Filled.Download, contentDescription = "CSV olarak dışa aktar")
+                    IconButton(onClick = { exportMenuOpen = true }) {
+                        Icon(Icons.Filled.Download, contentDescription = "Raporu dışa aktar")
+                    }
+                    DropdownMenu(expanded = exportMenuOpen, onDismissRequest = { exportMenuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text("PDF olarak kaydet") },
+                            onClick = { exportMenuOpen = false; vm.preparePdf(tab) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("CSV olarak kaydet (Excel)") },
+                            onClick = { exportMenuOpen = false; confirmExport = true }
+                        )
                     }
                 }
             )
@@ -85,7 +102,7 @@ fun ReportsScreen(vm: ReportsViewModel = hiltViewModel()) {
             ) {
                 when (tab) {
                     ReportTab.SUMMARY -> summaryItems(s.summary.count, s.range, s.previousRange, s.comparison, s.monthly, s.yearly)
-                    ReportTab.PERSONS -> personItems(s.statements)
+                    ReportTab.PERSONS -> personItems(s.statements) { id -> vm.preparePdf(ReportTab.PERSONS, id) }
                     ReportTab.INVOICES -> invoiceItems(s.invoiceHistory)
                     ReportTab.COLLECTIONS -> collectionItems(s.collections, s.collectionsTotal)
                     ReportTab.PENDING -> pendingItems(s.pending)
@@ -209,13 +226,13 @@ private fun ComparisonLine(r: ComparisonRow) {
 
 // ---------------- Kişiler ----------------
 
-private fun LazyListScope.personItems(statements: List<PersonStatement>) {
+private fun LazyListScope.personItems(statements: List<PersonStatement>, onPdf: (Long) -> Unit) {
     if (statements.isEmpty()) item { Text("Bu dönemde hareketi veya bakiyesi olan kişi yok.") }
-    items(statements, key = { it.person.id }) { st -> PersonStatementCard(st) }
+    items(statements, key = { it.person.id }) { st -> PersonStatementCard(st) { onPdf(st.person.id) } }
 }
 
 @Composable
-private fun PersonStatementCard(st: PersonStatement) {
+private fun PersonStatementCard(st: PersonStatement, onPdf: () -> Unit) {
     var open by rememberSaveable(st.person.id) { mutableStateOf(false) }
     Card(onClick = { open = !open }, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -230,6 +247,7 @@ private fun PersonStatementCard(st: PersonStatement) {
                 "+ = kişi bana borçlu, − = ben borçluyum" + if (st.lines.isNotEmpty()) " • ${if (open) "Gizle" else "Hareketleri göster"}" else "",
                 style = MaterialTheme.typography.bodySmall
             )
+            TextButton(onClick = onPdf) { Text("Bu kişinin dökümünü PDF olarak kaydet") }
             if (open) {
                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
                 st.lines.forEach { l ->

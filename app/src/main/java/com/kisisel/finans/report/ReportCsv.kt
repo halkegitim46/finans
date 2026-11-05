@@ -125,7 +125,7 @@ object ReportCsv {
         return CsvWriter.build(rows)
     }
 
-    private fun typeLabel(t: TransactionType) = when (t) {
+    internal fun typeLabel(t: TransactionType) = when (t) {
         TransactionType.LEND -> "Borç verildi"
         TransactionType.BORROW -> "Borç alındı"
         TransactionType.PAID_ON_BEHALF -> "Adına ödeme"
@@ -133,7 +133,7 @@ object ReportCsv {
         TransactionType.DEBT_PAYMENT -> "Borç ödemesi"
     }
 
-    private fun invoiceTypeLabel(t: InvoiceType) = when (t) {
+    internal fun invoiceTypeLabel(t: InvoiceType) = when (t) {
         InvoiceType.ELECTRICITY -> "Elektrik"
         InvoiceType.WATER -> "Su"
         InvoiceType.GAS -> "Doğalgaz"
@@ -145,7 +145,7 @@ object ReportCsv {
         InvoiceType.OTHER -> "Diğer"
     }
 
-    private fun kindLabel(k: PendingKind) = when (k) {
+    internal fun kindLabel(k: PendingKind) = when (k) {
         PendingKind.INVOICE -> "Fatura"
         PendingKind.RECEIVABLE -> "Alacak"
         PendingKind.PAYABLE -> "Borç"

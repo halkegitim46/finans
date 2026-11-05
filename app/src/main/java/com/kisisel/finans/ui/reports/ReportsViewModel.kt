@@ -21,6 +21,9 @@ import com.kisisel.finans.report.RangePreset
 import com.kisisel.finans.report.ReportCalculator
 import com.kisisel.finans.report.ReportCsv
 import com.kisisel.finans.report.SeriesPoint
+import com.kisisel.finans.report.pdf.PdfReport
+import com.kisisel.finans.report.pdf.PdfReportRenderer
+import com.kisisel.finans.report.pdf.ReportPdf
 import com.kisisel.finans.security.AppLockManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -36,6 +39,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import javax.inject.Inject
 
@@ -46,6 +50,11 @@ enum class ReportTab(val id: String, val label: String) {
     COLLECTIONS("tahsilat", "Tahsilat"),
     PENDING("bekleyen", "Bekleyen")
 }
+
+enum class ExportKind { CSV, PDF }
+
+/** Dosya seçiciye verilecek ad ve tür; hazır olan baytlar ViewModel'de bekler. */
+data class ExportRequest(val name: String, val kind: ExportKind)
 
 data class ReportsState(
     val today: LocalDate,
@@ -148,9 +157,9 @@ class ReportsViewModel @Inject constructor(
         preset.value = RangePreset.CUSTOM
     }
 
-    // ---- CSV dışa aktarma ----
-    private val exportName = MutableStateFlow<String?>(null)
-    val exportNameState: StateFlow<String?> = exportName.asStateFlow()
+    // ---- Dışa aktarma (CSV / PDF) ----
+    private val exportRequest = MutableStateFlow<ExportRequest?>(null)
+    val exportRequestState: StateFlow<ExportRequest?> = exportRequest.asStateFlow()
     private var pendingBytes: ByteArray? = null
 
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4)
@@ -166,14 +175,49 @@ class ReportsViewModel @Inject constructor(
             ReportTab.PENDING -> ReportCsv.pending(s.pending)
         }
         pendingBytes = CsvWriter.bytes(csv)
-        exportName.value = "KFT_Rapor_${tab.id}_${s.range.start}_${s.range.end}.csv"
+        exportRequest.value = ExportRequest("KFT_Rapor_${tab.id}_${s.range.start}_${s.range.end}.csv", ExportKind.CSV)
+    }
+
+    /**
+     * Açık sekmenin PDF'i. Kişiler sekmesinde [personId] verilirse yalnızca o kişinin hesap dökümü.
+     * PDF şifrelenmez.
+     */
+    fun preparePdf(tab: ReportTab, personId: Long? = null) {
+        val s = state.value
+        val report: PdfReport = when (tab) {
+            ReportTab.SUMMARY ->
+                ReportPdf.summary(s.range, s.previousRange, s.summary.count, s.comparison, s.monthly, s.yearly)
+            ReportTab.PERSONS ->
+                ReportPdf.persons(s.range, if (personId == null) s.statements else s.statements.filter { it.person.id == personId })
+            ReportTab.INVOICES -> ReportPdf.invoices(s.range, s.invoiceHistory)
+            ReportTab.COLLECTIONS -> ReportPdf.collections(s.range, s.collections, s.collectionsTotal)
+            ReportTab.PENDING -> ReportPdf.pending(s.today, s.pending)
+        }
+        val personName = personId?.let { id -> s.statements.firstOrNull { it.person.id == id }?.person?.fullName }
+        val name = if (tab == ReportTab.PERSONS && personName != null) {
+            "KFT_Hesap_${ReportPdf.fileSafe(personName)}_${s.range.start}_${s.range.end}.pdf"
+        } else {
+            "KFT_Rapor_${tab.id}_${s.range.start}_${s.range.end}.pdf"
+        }
+        viewModelScope.launch {
+            try {
+                val bytes = withContext(Dispatchers.Default) {
+                    PdfReportRenderer.render(report, CsvWriter.date(s.today))
+                }
+                pendingBytes = bytes
+                exportRequest.value = ExportRequest(name, ExportKind.PDF)
+            } catch (e: Exception) {
+                _messages.tryEmit("PDF oluşturulamadı.")
+            }
+        }
     }
 
     /** Dosya seçici açılmadan önce: dönüşte uygulama kilitlenmesin. */
     fun allowExternalUi() = lockManager.allowExternalUi(SystemClock.elapsedRealtime())
 
+    /** Seçici açıldı; tekrar tetiklenmesin. */
     fun exportLaunched() {
-        exportName.value = null
+        exportRequest.value = null
     }
 
     fun onExportUri(uri: Uri?) {

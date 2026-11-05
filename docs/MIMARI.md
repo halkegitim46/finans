@@ -167,3 +167,13 @@ Kilit/Kurulum → Ana Sayfa | Kişiler (liste→detay) | Faturalar (liste→deta
 | Yedek: manuel, dışa aktarma, geri yükleme, tarih/dosya bilgisi, bütünlük, bozuk dosya hatası | Tamam |
 | Testler (finansal hesap, kısmi ödeme/tahsilat, fatura, tekrar, bildirim planlama, yedek, kilit, migration, hatalı girişler) | Birim/Robolectric testleri tamam; arayüz ve cihaz testleri yok |
 | Derlenebilir, telefona kurulabilir APK | GitHub Actions ile (debug ve imzalı release) |
+
+## Aşama 12 – PDF rapor
+- **Yaklaşım**: ek kütüphane yok; Android `PdfDocument` + `Canvas`. Mantık üç katman: (1) `ReportPdf` rapor verisini `PdfBlock`'lara çevirir (saf),
+  (2) `PdfPaginator` blokları A4 sayfalara yerleştirir (saf; `TextMeasurer` ile metin ölçer), (3) `PdfReportRenderer` yerleşik öğeleri çizer (Android).
+- **Sayfalama**: uzun metin ve tablolar sayfalara bölünür, tablo başlığı her sayfada tekrarlanır, bir satır bölünmez, başlık sayfa sonunda yalnız kalmaz,
+  çok uzun kelimeler harf sınırında kırılır, hücre metni sarılır (satır yüksekliği artar). Grafikler sayfaya sığmazsa sonraki sayfaya geçer.
+- **Grafik**: gruplanmış sütun grafiği PDF'e doğrudan çizilir (yükseklik oranı yalnızca görsel; tutarlar tabloda tam). Çok etiketli grafiklerde etiketler seyreltilir.
+- **Kapsam**: açık sekme; Kişiler sekmesinde tek kişi (kart düğmesi) veya tümü (üst menü). Her sayfada üst bilgi (uygulama, rapor, tarih) ve "Sayfa i / n".
+- **Gizlilik**: PDF şifrelenmez (kullanıcı tercihi); dışa aktarmada ek uyarı gösterilmez. Dosya seçici için kilit istisnası (Aşama 9) kullanılır.
+- **Test**: sayfalama/grafik geometrisi/blok üretimi birim testlerle doğrulanır; gerçek çizim (yazı tipi, ₺ simgesi, görünüm) cihazda elle kontrol edilmelidir.
