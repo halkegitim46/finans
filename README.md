@@ -16,6 +16,10 @@ Kullanım için: [`docs/KULLANIM_KILAVUZU.md`](docs/KULLANIM_KILAVUZU.md) · Mim
 - **Güvenlik**: uygulama parolası (PBKDF2), PIN, biyometrik, arka planda kilit, ekran görüntüsü engeli, AES-256 şifreli veritabanı.
 - **Yedekleme**: ayrı parolayla AES-256-GCM şifreli yedek; doğrulamalı, geri alınabilir (atomik) geri yükleme. Hiçbir veri sunucuya gönderilmez.
 
+## Uygulama simgesi
+Uyarlanabilir (adaptive) simge: yeşil degrade zemin, beyaz **₺** (gövde ve ayak) ve kehribar iki eğik çizgi; Android 13+ için tek renkli "temalı simge" sürümü de vardır.
+Kaynaklar: `app/src/main/res/drawable/ic_launcher_*.xml`; tasarım kaynağı (SVG) ve önizleme: `docs/ikon/`.
+
 ## Derleme (GitHub Actions)
 `.github/workflows/android-build.yml` her `main`/`master` push'unda debug APK üretir: `FinansTakip_V<N>.apk` (N = çalıştırma numarası,
 `versionCode` ve `versionName` otomatik artar). APK önce derlenip yüklenir, birim testleri sonra çalışır; test hatası APK'yı engellemez

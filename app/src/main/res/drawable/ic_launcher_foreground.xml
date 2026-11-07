@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 108dp tuval, güvenli alan ortadaki ~66dp. Türk lirası simgesi (₺): gövde + kıvrımlı ayak (beyaz), iki eğik çizgi (kehribar). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="1.1"
+        android:scaleY="1.1"
+        android:translateX="1.7">
+
+        <!-- Yumuşak rozet halkası -->
+        <path
+            android:fillColor="#1AFFFFFF"
+            android:pathData="M26,54 A28,28 0 1 1 82,54 A28,28 0 1 1 26,54 Z" />
+
+        <!-- Gölge -->
+        <path
+            android:strokeColor="#38000000"
+            android:strokeWidth="8"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M46,32.5 V78.5 C62,78.5 74,70.5 74,55.5" />
+
+        <!-- ₺ gövdesi ve ayağı -->
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="8"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M46,31 V77 C62,77 74,69 74,54" />
+
+        <!-- İki eğik çizgi -->
+        <path
+            android:strokeColor="#FBBF24"
+            android:strokeWidth="5"
+            android:strokeLineCap="round"
+            android:pathData="M31,55 L62,38" />
+        <path
+            android:strokeColor="#FBBF24"
+            android:strokeWidth="5"
+            android:strokeLineCap="round"
+            android:pathData="M31,65 L62,48" />
+    </group>
+</vector>

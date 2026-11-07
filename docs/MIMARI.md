@@ -177,3 +177,8 @@ Kilit/Kurulum → Ana Sayfa | Kişiler (liste→detay) | Faturalar (liste→deta
 - **Kapsam**: açık sekme; Kişiler sekmesinde tek kişi (kart düğmesi) veya tümü (üst menü). Her sayfada üst bilgi (uygulama, rapor, tarih) ve "Sayfa i / n".
 - **Gizlilik**: PDF şifrelenmez (kullanıcı tercihi); dışa aktarmada ek uyarı gösterilmez. Dosya seçici için kilit istisnası (Aşama 9) kullanılır.
 - **Test**: sayfalama/grafik geometrisi/blok üretimi birim testlerle doğrulanır; gerçek çizim (yazı tipi, ₺ simgesi, görünüm) cihazda elle kontrol edilmelidir.
+
+## Simge
+- `mipmap-anydpi/ic_launcher(.xml|_round.xml)`: arka plan (`ic_launcher_bg`, çapraz degrade #10B981 → #064E3B), ön plan (`ic_launcher_foreground`, ₺: beyaz gövde+ayak, kehribar #FBBF24 çizgiler, hafif gölge ve rozet halkası), tek renkli `ic_launcher_monochrome` (Android 13+ temalı simge).
+- minSdk 26 olduğundan ayrı PNG gerekmez. Mağaza/profil görseli için `docs/ikon/ikon.svg` 512×512 dışa aktarılabilir.
+- Açılışta beyaz/siyah parlama olmaması için pencere arka planı Compose temasıyla aynı (`values/` ve `values-night/`).
