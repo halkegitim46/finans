@@ -36,22 +36,22 @@ jobs:
       # Secret tanımlı değilse rastgele debug anahtarı kullanılır (güncellemek için önce eskisini kaldırmak gerekir).
       - name: İmza anahtarını hazırla
         env:
-          KFT_KEYSTORE_BASE64: ${{ secrets.KFT_KEYSTORE_BASE64 }}
-          KFT_KEYSTORE_PASSWORD: ${{ secrets.KFT_KEYSTORE_PASSWORD }}
-          KFT_KEY_ALIAS: ${{ secrets.KFT_KEY_ALIAS }}
-          KFT_KEY_PASSWORD: ${{ secrets.KFT_KEY_PASSWORD }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          if [ -n "$KFT_KEYSTORE_BASE64" ]; then
-            echo "$KFT_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/kft.jks"
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/kft.jks"
             {
-              echo "KFT_KEYSTORE_PATH=$RUNNER_TEMP/kft.jks"
-              echo "KFT_KEYSTORE_PASSWORD=$KFT_KEYSTORE_PASSWORD"
-              echo "KFT_KEY_ALIAS=$KFT_KEY_ALIAS"
-              echo "KFT_KEY_PASSWORD=$KFT_KEY_PASSWORD"
+              echo "KEYSTORE_PATH=$RUNNER_TEMP/kft.jks"
+              echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+              echo "KEY_ALIAS=$KEY_ALIAS"
+              echo "KEY_PASSWORD=$KEY_PASSWORD"
             } >> "$GITHUB_ENV"
             echo "Sabit imza anahtarı kullanılacak."
           else
-            echo "::warning::KFT_KEYSTORE_BASE64 secret tanımlı değil. APK rastgele debug anahtarıyla imzalanacak; güncellemek için eski sürümü kaldırmanız gerekir."
+            echo "::warning::KEYSTORE_BASE64 secret tanımlı değil. APK rastgele debug anahtarıyla imzalanacak; güncellemek için eski sürümü kaldırmanız gerekir."
           fi
 
       # Her derlemede sürüm numarasını (run_number) 1 artırır

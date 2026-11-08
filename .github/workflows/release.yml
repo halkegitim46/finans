@@ -1,7 +1,7 @@
 name: Release APK (imzalı)
 
 # Elle çalıştırılır: Actions → "Release APK (imzalı)" → Run workflow.
-# Yalnızca KFT_* secret'ları tanımlıysa çalışır; asla rastgele debug anahtarıyla imzalamaz.
+# Yalnızca * secret'ları tanımlıysa çalışır; asla rastgele debug anahtarıyla imzalamaz.
 on:
   workflow_dispatch:
     inputs:
@@ -40,21 +40,21 @@ jobs:
 
       - name: İmza anahtarını zorunlu kıl
         env:
-          KFT_KEYSTORE_BASE64: ${{ secrets.KFT_KEYSTORE_BASE64 }}
-          KFT_KEYSTORE_PASSWORD: ${{ secrets.KFT_KEYSTORE_PASSWORD }}
-          KFT_KEY_ALIAS: ${{ secrets.KFT_KEY_ALIAS }}
-          KFT_KEY_PASSWORD: ${{ secrets.KFT_KEY_PASSWORD }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          if [ -z "$KFT_KEYSTORE_BASE64" ] || [ -z "$KFT_KEYSTORE_PASSWORD" ] || [ -z "$KFT_KEY_ALIAS" ] || [ -z "$KFT_KEY_PASSWORD" ]; then
-            echo "::error::Release için KFT_KEYSTORE_BASE64, KFT_KEYSTORE_PASSWORD, KFT_KEY_ALIAS ve KFT_KEY_PASSWORD secret'ları tanımlı olmalı (bkz. README)."
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "::error::Release için KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS ve KEY_PASSWORD secret'ları tanımlı olmalı (bkz. README)."
             exit 1
           fi
-          echo "$KFT_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/kft.jks"
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/kft.jks"
           {
-            echo "KFT_KEYSTORE_PATH=$RUNNER_TEMP/kft.jks"
-            echo "KFT_KEYSTORE_PASSWORD=$KFT_KEYSTORE_PASSWORD"
-            echo "KFT_KEY_ALIAS=$KFT_KEY_ALIAS"
-            echo "KFT_KEY_PASSWORD=$KFT_KEY_PASSWORD"
+            echo "KEYSTORE_PATH=$RUNNER_TEMP/kft.jks"
+            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+            echo "KEY_ALIAS=$KEY_ALIAS"
+            echo "KEY_PASSWORD=$KEY_PASSWORD"
           } >> "$GITHUB_ENV"
 
       - name: Sürüm numaralarını güncelle
