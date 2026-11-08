@@ -1,9 +1,5 @@
 name: Android CI + Release
 
-# Push (main/master, v* tag), PR ve manuel tetikleme.
-# PR → testler + debug APK + R8 imzasız doğrulama
-# Push/Manuel → testler + debug APK + imzalı release APK (R8)
-# Tag → ek olarak GitHub Release
 on:
   push:
     branches: [ main, master ]
@@ -36,7 +32,6 @@ permissions:
   contents: read
 
 jobs:
-  # ── Sürüm hesaplama ──────────────────────────────────────────────
   version:
     runs-on: ubuntu-24.04
     timeout-minutes: 2
@@ -61,7 +56,6 @@ jobs:
           echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
           echo "### Sürüm: \`$NAME\` (code \`${{ github.run_number }}\`)" >> "$GITHUB_STEP_SUMMARY"
 
-  # ── Debug + Testler (her zaman çalışır) ─────────────────────────
   build:
     needs: version
     runs-on: ubuntu-24.04
@@ -144,7 +138,6 @@ jobs:
           path: out/*.apk
           if-no-files-found: error
 
-  # ── PR'da R8 doğrulaması (imzasız, gizli değişken gerekmez) ────
   r8-rules-check:
     if: github.event_name == 'pull_request'
     needs: version
@@ -169,7 +162,6 @@ jobs:
       - name: Release (R8) derle — imzasız doğrulama
         run: ./gradlew assembleRelease -Pkft.minify=${{ github.event.inputs.minify || 'true' }} --no-daemon --stacktrace --console=plain
 
-  # ── İmzalı Release APK ──────────────────────────────────────────
   release:
     if: >-
       (github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true') ||
@@ -242,10 +234,17 @@ jobs:
           shopt -s nullglob
           APKS=(app/build/outputs/apk/release/*.apk)
           if [ ${#APKS[@]} -eq 0 ]; then echo "::error::Release APK bulunamadı"; exit 1; fi
+
           : > imza.txt
           for f in "${APKS[@]}"; do
-            "$APKSIGNER" verify --print-certs "$f" | tee -a imza.txt | head -5
+            if ! OUTPUT=$("$APKSIGNER" verify --print-certs "$f" 2>&1); then
+              echo "::error::APK imza doğrulaması başarısız: $f"
+              printf '%s\n' "$OUTPUT" | tee -a imza.txt
+              exit 1
+            fi
+            printf '%s\n' "$OUTPUT" | tee -a imza.txt | head -5
           done
+
           if grep -qi "Android Debug" imza.txt; then
             if [ -n "$KEYSTORE_BASE64" ]; then
               echo "::error::Anahtar tanımlı ama APK debug anahtarıyla imzalanmış. app/build.gradle.kts signingConfigs bloğunu kontrol edin."
