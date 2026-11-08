@@ -214,6 +214,7 @@ jobs:
             echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
             echo "KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
             echo "### ✅ Keystore çözüldü" >> "$GITHUB_STEP_SUMMARY"
+            ls -lh "$RUNNER_TEMP/release.jks"
           else
             echo "::warning::KEYSTORE_BASE64 tanımlı değil; release APK debug anahtarıyla imzalanacak."
             echo "### ⚠️ Keystore tanımlı değil" >> "$GITHUB_STEP_SUMMARY"
@@ -230,24 +231,39 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
+          set +o pipefail   # head/tee kaynaklı SIGPIPE yanlış exit kodunu önle
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          echo "Kullanılan apksigner: $APKSIGNER"
+          "$APKSIGNER" version || true
+
           shopt -s nullglob
           APKS=(app/build/outputs/apk/release/*.apk)
           if [ ${#APKS[@]} -eq 0 ]; then echo "::error::Release APK bulunamadı"; exit 1; fi
 
           : > imza.txt
+          VERIFY_FAILED=0
           for f in "${APKS[@]}"; do
-            if ! OUTPUT=$("$APKSIGNER" verify --print-certs "$f" 2>&1); then
-              echo "::error::APK imza doğrulaması başarısız: $f"
-              printf '%s\n' "$OUTPUT" | tee -a imza.txt
-              exit 1
+            echo "=========================================="
+            echo "Dosya: $f"
+            set +e
+            OUTPUT=$("$APKSIGNER" verify --verbose --print-certs "$f" 2>&1)
+            RC=$?
+            set -e
+            printf '%s\n' "$OUTPUT" | tee -a imza.txt
+            echo "--- verify çıkış kodu: $RC ---"
+            if [ $RC -ne 0 ]; then
+              VERIFY_FAILED=1
+              echo "::error::apksigner doğrulaması başarısız: $f (kod $RC)"
+              keytool -printcert -jarfile "$f" 2>&1 || echo "(keytool da başarısız)"
             fi
-            printf '%s\n' "$OUTPUT" | tee -a imza.txt | head -5
           done
+          set -o pipefail
+
+          if [ $VERIFY_FAILED -ne 0 ]; then exit 1; fi
 
           if grep -qi "Android Debug" imza.txt; then
             if [ -n "$KEYSTORE_BASE64" ]; then
-              echo "::error::Anahtar tanımlı ama APK debug anahtarıyla imzalanmış. app/build.gradle.kts signingConfigs bloğunu kontrol edin."
+              echo "::error::APK debug anahtarıyla imzalanmış ama KEYSTORE_BASE64 tanımlı. build.gradle.kts signingConfigs bloğunu kontrol edin."
               exit 1
             else
               echo "::warning::Release APK debug anahtarıyla imzalandı."
@@ -256,7 +272,11 @@ jobs:
           else
             echo "### ✅ RELEASE APK (kendi anahtarınızla imzalı)" >> "$GITHUB_STEP_SUMMARY"
           fi
-          grep -E "Signer #1 certificate (DN|SHA-256)" imza.txt | sed 's/^/- /' >> "$GITHUB_STEP_SUMMARY"
+
+          {
+            grep -E "certificate DN:" imza.txt | sed -E 's/^[[:space:]]*//; s/^/- DN: /' || true
+            grep -E "certificate SHA-256 digest:" imza.txt | sed -E 's/^[[:space:]]*//; s/^/- SHA-256: /' || true
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: APK'yı sürümlü ada kopyala
         shell: bash
@@ -274,7 +294,16 @@ jobs:
           path: release-build.log
           if-no-files-found: ignore
 
+      - name: İmza doğrulama logunu yükle
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: imza-dogrulama-log
+          path: imza.txt
+          if-no-files-found: ignore
+
       - uses: actions/upload-artifact@v6
+        if: success()
         with:
           name: FinansTakip-v${{ needs.version.outputs.version_name }}-release-apk
           path: out/FinansTakip_V*.apk
