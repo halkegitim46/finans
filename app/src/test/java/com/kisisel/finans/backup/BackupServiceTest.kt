@@ -107,21 +107,43 @@ class BackupServiceTest {
         assertEquals(before, DatabaseSnapshotter.export(db))
     }
 
-    @Test fun failedRestoreRollsBackAndKeepsExistingData() = runDb {
+    private fun brokenSnapshot(good: com.kisisel.finans.data.local.DatabaseSnapshot) = good.copy(
+        transactions = good.transactions + TransactionEntity(
+            id = 99, personId = 12345, type = TransactionType.LEND, amountKurus = 1, transactionDate = 20_000,
+            idempotencyKey = "kopuk", createdAt = 0, updatedAt = 0
+        )
+    )
+
+    @Test fun inconsistentBackupIsRejectedByValidatorBeforeTouchingDatabase() = runDb {
         populate()
         val before = DatabaseSnapshotter.export(db)
         val good = BackupCodec.decode(BackupCodec.encode(before, 1))
 
-        val broken = good.snapshot.copy(
-            transactions = good.snapshot.transactions + TransactionEntity(
-                id = 99, personId = 12345, type = TransactionType.LEND, amountKurus = 1, transactionDate = 1,
-                idempotencyKey = "kopuk", createdAt = 0, updatedAt = 0
-            )
-        )
-        val error = runCatching { service.restore(good.copy(snapshot = broken)) }.exceptionOrNull()
+        val error = runCatching { service.restore(good.copy(snapshot = brokenSnapshot(good.snapshot))) }.exceptionOrNull()
 
         assertTrue(error is FinanceException.BackupInvalid)
-        assertTrue(error!!.message!!.contains("değişmedi"))
+        assertTrue(error!!.message!!.contains("uyumsuz"))
+        assertEquals(before, DatabaseSnapshotter.export(db))
+    }
+
+    @Test fun readBackupRejectsInconsistentContentAtPreviewStage() = runDb {
+        populate()
+        val good = BackupCodec.decode(BackupCodec.encode(DatabaseSnapshotter.export(db), 1))
+        val plain = BackupCodec.encode(brokenSnapshot(good.snapshot), 1)
+        val file = BackupCrypto.encrypt(plain, password.toCharArray(), 1_000)
+
+        val error = runCatching { service.readBackup(file, password) }.exceptionOrNull()
+        assertTrue(error is FinanceException.BackupInvalid)
+        assertTrue(error!!.message!!.contains("uyumsuz"))
+    }
+
+    @Test fun databaseLevelFailureRollsBackAtomically() = runDb {
+        // Doğrulayıcıyı atlayan doğrudan yazma: yabancı anahtar ihlali tüm işlemi geri almalı.
+        populate()
+        val before = DatabaseSnapshotter.export(db)
+        val broken = brokenSnapshot(before)
+        val failed = runCatching { DatabaseSnapshotter.replaceAll(db, broken) }.isFailure
+        assertTrue(failed)
         assertEquals(before, DatabaseSnapshotter.export(db))
     }
 

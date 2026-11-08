@@ -40,11 +40,15 @@ class BackupService @Inject constructor(
     /** Dosyayı çözer ve doğrular; veritabanına DOKUNMAZ. */
     suspend fun readBackup(file: ByteArray, password: String): ParsedBackup {
         val plain = withContext(Dispatchers.Default) { BackupCrypto.decrypt(file, password.toCharArray()) }
-        return BackupCodec.decode(plain)
+        val parsed = BackupCodec.decode(plain)
+        // Şifreleme/bütünlük geçse bile içerik finansal kurallara uymalı: sorun önizlemeden ÖNCE bildirilir.
+        BackupSnapshotValidator.requireValid(parsed.snapshot)
+        return parsed
     }
 
     /** Mevcut tüm verileri siler ve yedeği yükler (tek transaction; hata olursa önceki veriler korunur). */
     suspend fun restore(parsed: ParsedBackup) {
+        BackupSnapshotValidator.requireValid(parsed.snapshot)   // savunma: doğrulanmamış içerik asla yazılmaz
         try {
             DatabaseSnapshotter.replaceAll(db, parsed.snapshot)
         } catch (e: CancellationException) {

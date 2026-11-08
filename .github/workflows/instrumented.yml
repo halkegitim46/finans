@@ -1,0 +1,53 @@
+name: Cihaz testleri (emülatör)
+
+# Elle çalıştırılır. Gerçek SQLCipher (şifreli veritabanı) ve Android Keystore testlerini emülatörde koşar.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  connected:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-version: '8.9'
+
+      - name: Gradle wrapper hazırla
+        run: |
+          if [ ! -f gradlew ]; then
+            gradle wrapper --gradle-version 8.9
+          fi
+          chmod +x gradlew
+
+      - name: KVM'i etkinleştir
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Emülatörde testleri çalıştır
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          script: ./gradlew connectedDebugAndroidTest --no-daemon --stacktrace
+
+      - name: Rapor
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: cihaz-testi-raporu
+          path: app/build/reports/androidTests/
+          if-no-files-found: ignore

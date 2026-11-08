@@ -23,6 +23,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -78,11 +79,12 @@ class InvoiceRepositoryTest {
         first: LocalDate = d("2026-11-05"),
         amount: Long? = 150_000,
         fixed: Boolean = true,
-        recurrence: Recurrence = Recurrence.MONTHLY
+        recurrence: Recurrence = Recurrence.MONTHLY,
+        customDays: Int? = null
     ) = invoices.createTemplate(
         NewInvoice(
             personId = personId, name = "Elektrik", type = InvoiceType.ELECTRICITY, amountKurus = amount,
-            isAmountFixed = fixed, recurrence = recurrence, customIntervalDays = null, firstDueDate = first,
+            isAmountFixed = fixed, recurrence = recurrence, customIntervalDays = customDays, firstDueDate = first,
             note = "", remindersEnabled = true, reminderDays = setOf(7, 3, 1, 0), overdueReminderEveryDays = 1
         ),
         today
@@ -236,5 +238,25 @@ class InvoiceRepositoryTest {
         val occ = occurrences().first()
         invoices.cancelOccurrence(occ.id)
         assertFails<FinanceException.OccurrenceNotPayable> { invoices.payOccurrence(occ.id, today) }
+    }
+
+    @Test fun veryOldFirstDueDoesNotHideCurrentDailyPeriods() = runDb {
+        // 5 yıl önce başlayan günlük tekrar: eski 1000 dönem sınırı güncel dönemleri atlıyordu.
+        newInvoice(personId = null, first = d("2021-11-02"), recurrence = Recurrence.CUSTOM_DAYS, customDays = 1)
+        val dates = occurrences().map { it.dueDate }
+
+        assertTrue(d("2021-11-02") in dates)                 // dönem 0 her zaman
+        assertTrue(d("2026-11-02") in dates)                 // oluşturulma günü
+        assertTrue(d("2026-12-17") in dates)                 // ufuk sonu (bugün + 45 gün)
+        assertEquals(1 + 46, dates.size)                     // dönem 0 + 02 Kas..17 Ara (46 gün)
+        assertEquals(dates.size, dates.toSet().size)         // çift yok
+    }
+
+    @Test fun oldYearlyAndMonthlyTemplatesGenerateCurrentPeriods() = runDb {
+        newInvoice(personId = null, first = d("2010-03-15"), recurrence = Recurrence.MONTHLY)
+        val dates = occurrences().map { it.dueDate }
+        assertTrue(d("2010-03-15") in dates)
+        assertTrue(d("2026-11-15") in dates)
+        assertTrue(d("2026-12-15") in dates)                 // ufuk: 2 Kas + 45 gün = 17 Ara
     }
 }

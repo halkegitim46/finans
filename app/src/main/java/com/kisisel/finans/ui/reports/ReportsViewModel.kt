@@ -221,6 +221,7 @@ class ReportsViewModel @Inject constructor(
     }
 
     fun onExportUri(uri: Uri?) {
+        lockManager.endExternalUi()
         val bytes = pendingBytes
         pendingBytes = null
         if (uri == null || bytes == null) return

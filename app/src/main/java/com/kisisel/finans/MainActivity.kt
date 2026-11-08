@@ -23,6 +23,7 @@ import com.kisisel.finans.security.AppLockManager
 import com.kisisel.finans.security.SecurityStore
 import com.kisisel.finans.ui.lock.LockGate
 import com.kisisel.finans.ui.navigation.AppRoot
+import com.kisisel.finans.ui.startup.StartupGate
 import com.kisisel.finans.ui.theme.KisiselFinansTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -58,13 +59,16 @@ class MainActivity : FragmentActivity() {
             KisiselFinansTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     LockGate {
-                        AppRoot(
-                            pendingOccurrenceId = pendingOccurrence,
-                            onPendingConsumed = {
-                                pendingOccurrence = null
-                                intent?.removeExtra(EXTRA_OCCURRENCE_ID)
-                            }
-                        )
+                        // Veritabanı doğrulanmadan uygulama içeriği oluşturulmaz (çökme yerine kurtarma ekranı).
+                        StartupGate {
+                            AppRoot(
+                                pendingOccurrenceId = pendingOccurrence,
+                                onPendingConsumed = {
+                                    pendingOccurrence = null
+                                    intent?.removeExtra(EXTRA_OCCURRENCE_ID)
+                                }
+                            )
+                        }
                     }
                 }
             }

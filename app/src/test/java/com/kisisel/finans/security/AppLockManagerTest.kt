@@ -82,25 +82,36 @@ class AppLockManagerTest {
         assertEquals(LockState.LOCKED, m2.state.value)
     }
 
-    @Test fun externalUiSkipsExactlyOneLock() {
+    @Test fun externalUiExemptionLastsUntilResultCallback() {
         val m = manager(withPassword.copy(lockTimeoutSeconds = 0))
         m.onUnlocked()
         m.allowExternalUi(1_000)
         m.onBackgrounded(2_000)          // dosya seçici açıldı
-        m.onForegrounded(9_000)          // geri dönüldü: kilitlenmez
+        m.onForegrounded(9_000)          // seçiciden dönüldü: kilitlenmez
         assertEquals(LockState.UNLOCKED, m.state.value)
 
+        m.endExternalUi()                // sonuç (veya iptal) geri çağrısı
         m.onBackgrounded(10_000)         // gerçek arka plan: kilitlenir
         m.onForegrounded(10_001)
         assertEquals(LockState.LOCKED, m.state.value)
     }
 
-    @Test fun externalUiExemptionExpiresAfterFiveMinutes() {
+    @Test fun cancelledPickerAlsoEndsExemption() {
+        val m = manager(withPassword.copy(lockTimeoutSeconds = 0))
+        m.onUnlocked()
+        m.allowExternalUi(0)
+        m.endExternalUi()                // kullanıcı seçiciyi iptal etti
+        m.onBackgrounded(1_000)
+        m.onForegrounded(1_001)
+        assertEquals(LockState.LOCKED, m.state.value)
+    }
+
+    @Test fun externalUiExemptionExpiresAfterThreeMinutes() {
         val m = manager(withPassword.copy(lockTimeoutSeconds = 0))
         m.onUnlocked()
         m.allowExternalUi(0)
         m.onBackgrounded(1_000)
-        m.onForegrounded(5 * 60 * 1000L + 1)   // süre doldu
+        m.onForegrounded(3 * 60 * 1000L + 1)   // süre doldu, geri çağrı hiç gelmedi
         assertEquals(LockState.LOCKED, m.state.value)
     }
 }

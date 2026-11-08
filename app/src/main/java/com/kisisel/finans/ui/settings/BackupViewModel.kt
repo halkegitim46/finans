@@ -100,6 +100,7 @@ class BackupViewModel @Inject constructor(
     }
 
     fun onExportUri(uri: Uri?) {
+        lockManager.endExternalUi()
         val bytes = pendingBytes
         val meta = pendingMeta
         if (uri == null || bytes == null || meta == null) {
@@ -132,6 +133,7 @@ class BackupViewModel @Inject constructor(
     // ---------------- geri yükle ----------------
 
     fun onRestoreUri(uri: Uri?) {
+        lockManager.endExternalUi()
         pendingRestoreUri = uri
         askPassword.value = uri != null
     }

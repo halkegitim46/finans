@@ -22,7 +22,7 @@ class MigrationsTest {
             steps++
             assertTrue("Migration zinciri döngüde", steps < 100)
         }
-        assertEquals(KisiselFinansDatabase.VERSION, version.coerceAtLeast(KisiselFinansDatabase.VERSION))
+        assertEquals("Zincir tam olarak güncel sürümde bitmeli", KisiselFinansDatabase.VERSION, version)
     }
 
     @Test fun noDuplicateMigrationsForSameStartVersion() {

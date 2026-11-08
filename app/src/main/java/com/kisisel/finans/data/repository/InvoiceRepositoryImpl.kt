@@ -234,13 +234,21 @@ class InvoiceRepositoryImpl @Inject constructor(
      */
     private suspend fun generateFor(t: InvoiceTemplateEntity, until: LocalDate): Int {
         val createdDay = Instant.ofEpochMilli(t.createdAt).atZone(clock.zone).toLocalDate()
+        val first = t.firstDueDate.toLocalDate()
         val now = clock.millis()
+
+        // Dönem 0 her zaman; sonrakiler yalnızca oluşturulma gününden itibaren (indeks doğrudan hesaplanır,
+        // yıllar önce başlayan günlük tekrar bile güncel dönemleri atlamaz).
+        val wanted = buildList<Pair<Int, LocalDate>> {
+            if (!first.isAfter(until)) add(0 to first)
+            addAll(
+                RecurrenceCalculator.occurrencesBetween(first, t.recurrence, t.customIntervalDays, createdDay, until)
+                    .filter { it.first > 0 }
+            )
+        }
+
         var created = 0
-        val due = RecurrenceCalculator.occurrencesUntil(
-            t.firstDueDate.toLocalDate(), t.recurrence, t.customIntervalDays, until
-        )
-        for ((index, date) in due) {
-            if (index > 0 && date.isBefore(createdDay)) continue
+        for ((_, date) in wanted) {
             val id = invoices.insertOccurrence(
                 InvoiceOccurrenceEntity(
                     templateId = t.id,

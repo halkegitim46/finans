@@ -5,6 +5,8 @@ Kotlin • Jetpack Compose • Material 3 • Room (SQLCipher) • Hilt • Work
 
 Kullanım için: [`docs/KULLANIM_KILAVUZU.md`](docs/KULLANIM_KILAVUZU.md) · Mimari ve tasarım kararları: [`docs/MIMARI.md`](docs/MIMARI.md)
 
+**Kapsam:** kişisel alacak-borç ve fatura takibi aracıdır; muhasebe/vergi/e-defter yazılımı değildir (KDV, çift taraflı kayıt, mali müşavir çıktısı kapsam dışıdır).
+
 ## Özellikler
 - **Kişiler**: her kişi için ayrı hesap; bir kişi hem borçlu hem alacaklı olabilir; silme yok, arşivleme var.
 - **Alacak / borç**: borç verme/alma, kişi adına ödeme, kısmi ve toplu tahsilat/ödeme, kapatma, iptal. Tutarlar kuruş (`Long`).
@@ -26,6 +28,16 @@ Kaynaklar: `app/src/main/res/drawable/ic_launcher_*.xml`; tasarım kaynağı (SV
 ama işi kırmızı yapar. Hata olursa "Başarısız testleri özetle" adımı kırılan testleri listeler, `test-raporu` artifact'ı ayrıntı içerir.
 
 Yerelde: Android Studio'da klasörü açın (JDK 17), `app` modülünü çalıştırın. Testler: `./gradlew testDebugUnitTest`.
+
+## Depo ilk kurulumu (bir kez): Gradle wrapper + Room şemaları
+Wrapper dosyaları (`gradlew`, `gradle/wrapper/*`) ve Room şemaları (`app/schemas/**`) depoda olmalı: aynı Gradle sürümüyle tekrarlanabilir derleme
+ve şema/migration denetimi için. Actions → **"Proje dosyalarını tamamla (Gradle wrapper + Room şemaları)"** → Run workflow. İş bitince bu dosyaları depoya kendisi işler
+(korumalı dalda push başarısız olursa dosyaları çalıştırmanın çıktısından alıp elle ekleyin). Sonra `SchemaGuardTest` etkinleşir: şema sürümü artırılıp şema/migration eklenmezse test kırılır.
+Yerel/CI derlemesi wrapper varsa onu kullanır; yoksa geçici olarak üretir.
+
+## Cihaz testleri (elle)
+Actions → **"Cihaz testleri (emülatör)"**: gerçek SQLCipher (anahtarla açma, yanlış anahtar reddi, dosyanın düz SQLite olmaması) ve gerçek Android Keystore
+(sarma/açma, anahtar kaybı) testlerini emülatörde koşar. Birim testlerinde (JVM) bu yerel kütüphaneler çalışmadığı için ayrı tutulur.
 
 ## Sürüm güncelleme ve imza anahtarı (ÖNEMLİ)
 Android, farklı anahtarla imzalı bir APK'yı mevcut kurulumun üstüne yüklemez. Secret tanımlı değilse her derleme rastgele bir debug
@@ -63,14 +75,14 @@ Telefonda APK'yı açarken "bilinmeyen kaynak" izni ve Play Protect "yine de yü
 ## Bilinen sınırlar
 - Tek kullanıcı, tek cihaz, yalnızca Türk lirası ve Türkçe.
 - **Parola kurtarılamaz.** Kurtarma yolu: önceden alınmış şifreli yedek veya verileri silip baştan başlama. Düzenli yedek alın.
-- Cihaz sıfırlanırsa veya Keystore anahtarı kaybolursa veritabanı açılamaz; yedek bu yüzden şart. (Anahtar bozuksa uygulama açılışta hata verebilir; çözüm: yedekten geri yükleme için verileri sıfırlamak.)
+- Cihaz sıfırlanırsa veya Keystore anahtarı kaybolursa şifreli veritabanı açılamaz. Uygulama çökmek yerine bir **kurtarma ekranı** gösterir (tekrar dene / yazarak onaylanan sıfırlama); anahtarsız veri geri getirilemez, yedek bu yüzden şart. Anahtar dosyası eksikken mevcut veritabanı için asla yeni anahtar üretilmez.
 - Yedekleme manueldir; otomatik/zamanlanmış yedek yok. Dışa aktarma: Excel yerine CSV; PDF ve CSV dosyaları şifrelenmez.
 - PDF, Android'in yerleşik çizicisiyle üretilir (A4, sistem yazı tipi); sayfa görünümü cihazda elle kontrol edilmelidir.
 - Hatırlatmalar yaklaşık 09:00'da, Android pil tasarrufuna göre gecikebilir; yalnızca seçilen "tam gün"ler bildirilir (telefon bir gün kapalıysa o günün 7/3/1 hatırlatması sonradan gönderilmez).
 - Uygulama açıkken gece yarısı geçerse ekranlar, uygulama arka plana alınıp tekrar açılınca güncellenir.
 - Tutar girişinde `1.500` binlik ayraç, `1.5` ondalık olarak yorumlanır; `1.500,50` ve `1500,50` biçimleri güvenlidir.
 - Veritabanı şeması sürüm 1'dedir; ilk şema değişikliğinde migration yazılması gerekir (`MigrationsTest` unutulmasını engeller).
-- Arayüz (Compose) otomatik testleri ve gerçek cihazda biyometrik/Keystore/bildirim akışlarının otomatik testleri yoktur; bunlar elle denenmelidir.
+- Keystore ve SQLCipher için cihaz testleri vardır (elle çalıştırılan workflow); arayüz (Compose), biyometrik ve bildirim akışlarının otomatik testi yoktur, bunlar elle denenmelidir.
 - Tek modüllü proje, paket bazlı katmanlama (`data/`, `domain/`, `ui/`, `security/`, `backup/`, `report/`, `reminder/`).
 - Kütüphane sürümleri `gradle/libs.versions.toml` içindedir; belirli aralıklarla güncellenmesi önerilir.
 

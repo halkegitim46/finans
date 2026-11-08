@@ -41,11 +41,17 @@ class AppLockManager @Inject constructor() {
     }
 
     /**
-     * Yedekleme gibi sistem dosya seçicisine gitmeden önce çağrılır. Dönüşteki ilk ön plana geçiş
-     * (en çok 5 dakika içinde) kilitlemez; aksi halde seçici sonucu kilit ekranında kaybolurdu.
+     * Yedekleme/dışa aktarma gibi sistem dosya seçicisine gitmeden önce çağrılır. Seçicinin sonuç geri çağrısı
+     * [endExternalUi] ile istisnayı bitirene kadar (en çok [EXTERNAL_UI_WINDOW_MS]) arka plandan dönüşte kilitlenmez;
+     * aksi halde seçici sonucu kilit ekranında kaybolurdu. Sonuç gelince (iptal dahil) istisna hemen kalkar.
      */
     fun allowExternalUi(elapsedMillis: Long) {
         suppressLockUntil = elapsedMillis + EXTERNAL_UI_WINDOW_MS
+    }
+
+    /** Dosya seçici sonucu (veya iptali) alındı: istisna biter, sonraki arka plan geçişleri normal kilitler. */
+    fun endExternalUi() {
+        suppressLockUntil = Long.MIN_VALUE
     }
 
     fun onBackgrounded(elapsedMillis: Long) {
@@ -57,8 +63,7 @@ class AppLockManager @Inject constructor() {
         val at = backgroundedAt ?: return
         backgroundedAt = null
         if (suppressLockUntil >= elapsedMillis) {
-            // Sistem dosya seçicisinden dönüş: bu bir kereye mahsus kilitleme yapılmaz.
-            suppressLockUntil = Long.MIN_VALUE
+            // Dosya seçici hâlâ etkin (sonuç geri çağrısı bekleniyor): kilitleme.
             return
         }
         val s = settings
@@ -72,6 +77,6 @@ class AppLockManager @Inject constructor() {
     }
 
     private companion object {
-        const val EXTERNAL_UI_WINDOW_MS = 5 * 60 * 1000L
+        const val EXTERNAL_UI_WINDOW_MS = 3 * 60 * 1000L
     }
 }

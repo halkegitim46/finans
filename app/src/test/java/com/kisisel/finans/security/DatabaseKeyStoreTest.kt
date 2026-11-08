@@ -59,4 +59,57 @@ class DatabaseKeyStoreTest {
         File(tmp.root, DatabaseKeyStore.FILE_NAME).writeBytes(byteArrayOf(1, 2, 3))
         assertThrows(Exception::class.java) { store().getOrCreateKeyHex() }
     }
+
+    // ---- anahtar kaybı / dayanıklılık ----
+    private fun reasonOf(block: () -> Unit): DatabaseKeyUnavailableException.Reason =
+        assertThrows(DatabaseKeyUnavailableException::class.java, block).reason
+
+    @Test fun existingDatabaseWithoutKeyFileNeverGetsNewKey() {
+        val s = DatabaseKeyStore(File(tmp.root, DatabaseKeyStore.FILE_NAME), XorWrapper()) { true }
+        assertEquals(DatabaseKeyUnavailableException.Reason.MISSING, reasonOf { s.getOrCreateKeyHex() })
+        assertFalse("yeni anahtar dosyası üretilmemeli", File(tmp.root, DatabaseKeyStore.FILE_NAME).exists())
+    }
+
+    @Test fun firstRunWithDatabaseAbsentCreatesKey() {
+        val s = DatabaseKeyStore(File(tmp.root, DatabaseKeyStore.FILE_NAME), XorWrapper()) { false }
+        assertEquals(64, s.getOrCreateKeyHex().length)
+    }
+
+    @Test fun existingKeyStillWorksWhenDatabaseExists() {
+        val file = File(tmp.root, DatabaseKeyStore.FILE_NAME)
+        val first = DatabaseKeyStore(file, XorWrapper()) { false }.getOrCreateKeyHex()
+        assertEquals(first, DatabaseKeyStore(file, XorWrapper()) { true }.getOrCreateKeyHex())
+    }
+
+    @Test fun unreadableKeyFileIsReportedAsUnreadable() {
+        val file = File(tmp.root, DatabaseKeyStore.FILE_NAME)
+        DatabaseKeyStore(file, XorWrapper()).getOrCreateKeyHex()
+        val failing = object : KeyWrapper {
+            override fun wrap(plain: ByteArray) = plain
+            override fun unwrap(wrapped: ByteArray): ByteArray = throw java.security.GeneralSecurityException("anahtar geçersiz")
+        }
+        assertEquals(DatabaseKeyUnavailableException.Reason.UNREADABLE, reasonOf { DatabaseKeyStore(file, failing).getOrCreateKeyHex() })
+    }
+
+    @Test fun wrongSizedKeyFileIsUnreadable() {
+        val file = File(tmp.root, DatabaseKeyStore.FILE_NAME)
+        file.writeBytes(XorWrapper().wrap(ByteArray(10)))
+        assertEquals(DatabaseKeyUnavailableException.Reason.UNREADABLE, reasonOf { DatabaseKeyStore(file, XorWrapper()).getOrCreateKeyHex() })
+    }
+
+    @Test fun brokenKeystoreOnFirstRunWritesNothing() {
+        val file = File(tmp.root, DatabaseKeyStore.FILE_NAME)
+        val lying = object : KeyWrapper {
+            override fun wrap(plain: ByteArray) = plain
+            override fun unwrap(wrapped: ByteArray) = ByteArray(32)   // sarılan anahtarı geri veremiyor
+        }
+        assertEquals(DatabaseKeyUnavailableException.Reason.UNREADABLE, reasonOf { DatabaseKeyStore(file, lying).getOrCreateKeyHex() })
+        assertFalse(file.exists())
+        assertFalse(File(tmp.root, DatabaseKeyStore.FILE_NAME + ".tmp").exists())
+    }
+
+    @Test fun noLeftoverTempFileAfterSuccess() {
+        DatabaseKeyStore(File(tmp.root, DatabaseKeyStore.FILE_NAME), XorWrapper()).getOrCreateKeyHex()
+        assertFalse(File(tmp.root, DatabaseKeyStore.FILE_NAME + ".tmp").exists())
+    }
 }

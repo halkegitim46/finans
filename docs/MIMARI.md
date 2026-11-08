@@ -182,3 +182,26 @@ Kilit/Kurulum → Ana Sayfa | Kişiler (liste→detay) | Faturalar (liste→deta
 - `mipmap-anydpi/ic_launcher(.xml|_round.xml)`: arka plan (`ic_launcher_bg`, çapraz degrade #10B981 → #064E3B), ön plan (`ic_launcher_foreground`, ₺: beyaz gövde+ayak, kehribar #FBBF24 çizgiler, hafif gölge ve rozet halkası), tek renkli `ic_launcher_monochrome` (Android 13+ temalı simge).
 - minSdk 26 olduğundan ayrı PNG gerekmez. Mağaza/profil görseli için `docs/ikon/ikon.svg` 512×512 dışa aktarılabilir.
 - Açılışta beyaz/siyah parlama olmaması için pencere arka planı Compose temasıyla aynı (`values/` ve `values-night/`).
+
+## Denetim sonrası iyileştirmeler
+- **Tekrar hesabı**: `RecurrenceCalculator.occurrencesBetween` başlangıç indeksini doğrudan hesaplar; yıllar önce başlayan günlük/aylık tekrar artık güncel dönemleri atlamaz
+  (eski sürümde ilk 1000 dönem sınırı yüzünden atlanabiliyordu). Sınır aşılırsa en yeni dönemler tutulur.
+- **Anahtar kaybı**: şifreli veritabanı varken anahtar dosyası yoksa YENİ anahtar üretilmez (veri sessizce erişilemez olurdu). Anahtar dosyası dayanıklı yazılır
+  (geçici dosya + diske eşitleme + geri okuyup doğrulama + atomik taşıma). `DatabaseHealthChecker` uygulama içeriğinden önce veritabanını doğrular;
+  başarısızlıkta `StartupGate` çökme yerine kurtarma ekranını gösterir (tekrar dene / "SİL" ile onaylı sıfırlama). İlk açılış ve eski veriden taşıma artık ana iş parçacığında değil,
+  "Veritabanı hazırlanıyor" ekranıyla IO iş parçacığında yapılır.
+- **Yedek içerik doğrulama**: `BackupSnapshotValidator` şifre/bütünlük kontrolünden bağımsız olarak finansal kuralları denetler (kimlik ve ilişki bütünlüğü, tutar/tarih aralığı,
+  dağıtım yönü/kişi/limit, iptal tutarlılığı, fatura dönemi durum kuralları, tahsilat ≤ alacak ve ödeme ≤ borç). Sorun, önizlemeden ÖNCE ve geri yüklemeden önce bildirilir.
+  Uygulamanın kendi ürettiği zengin veri (iptal, ödeme geri alma, kapatma, arşiv…) doğrulayıcıdan geçmelidir (`BackupValidatorRealDataTest`).
+- **Kilit istisnası**: dosya seçici için kilit muafiyeti artık sonuç geri çağrısıyla (iptal dahil) hemen biter; geri çağrı gelmezse en çok 3 dakika sürer.
+- **Migration/şema**: `MigrationsTest` zincirin tam olarak güncel sürümde bittiğini doğrular; `SchemaGuardTest` her sürüm için şema dosyasının depoda olmasını ister.
+  Gradle wrapper ve şemalar tek tıkla "Proje dosyalarını tamamla" workflow'uyla depoya işlenir.
+- **Cihaz testleri**: gerçek SQLCipher ve Keystore için `androidTest` (elle çalışan emülatör workflow'u).
+- **`app_settings` tablosu**: şimdilik kullanılmıyor (ayarlar DataStore'da); şema ve yedeğe dahil, gelecekte uygulama içi ayarlar için ayrıldı.
+
+### Yeni migration yazma rehberi
+1. `KisiselFinansDatabase.VERSION` değerini artırın ve entity değişikliğini yapın.
+2. `Migrations.ALL` içine `Migration(eski, yeni)` ekleyin; yıkıcı migration (`fallbackToDestructiveMigration`) KULLANMAYIN.
+3. "Proje dosyalarını tamamla" workflow'unu çalıştırıp yeni `app/schemas/.../<sürüm>.json` dosyasını depoya işleyin.
+4. `BackupCodec` sürümünü/uyumluluğunu gözden geçirin (eski yedekler yeni sürümde açılabilmeli); gerekirse doğrulayıcıyı güncelleyin.
+5. Eski sürümden gerçek veriyle yükseltme testi yazın (Robolectric + `MigrationTestHelper`); `MigrationsTest` ve `SchemaGuardTest` yeşil olmalı.
