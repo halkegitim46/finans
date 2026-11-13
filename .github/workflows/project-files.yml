@@ -1,7 +1,5 @@
 name: Proje dosyalarını tamamla (Gradle wrapper + Room şemaları)
 
-# Gerektiğinde elle çalıştırın: Gradle wrapper dosyalarını ve Room şema dosyalarını (app/schemas) depoya işler.
-# Böylece derleme yerelde ve CI'da aynı Gradle sürümüyle yapılır, şema değişiklikleri/migration'lar denetlenebilir.
 on:
   workflow_dispatch:
 

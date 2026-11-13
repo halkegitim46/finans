@@ -23,8 +23,6 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      # Gradle wrapper yoksa oluştur; çalıştırma iznini her durumda ver
-      # (gradlew "Permission denied" hatasını önler).
       - name: Gradle wrapper hazırla
         run: |
           if [ ! -f gradlew ]; then
@@ -32,29 +30,26 @@ jobs:
           fi
           chmod +x gradlew
 
-      # Sabit imza anahtarı: her sürüm eskisinin üstüne VERİ KAYBI OLMADAN kurulabilsin.
-      # Secret tanımlı değilse rastgele debug anahtarı kullanılır (güncellemek için önce eskisini kaldırmak gerekir).
       - name: İmza anahtarını hazırla
         env:
-          KFT_KEYSTORE_BASE64: ${{ secrets.KFT_KEYSTORE_BASE64 }}
-          KFT_KEYSTORE_PASSWORD: ${{ secrets.KFT_KEYSTORE_PASSWORD }}
-          KFT_KEY_ALIAS: ${{ secrets.KFT_KEY_ALIAS }}
-          KFT_KEY_PASSWORD: ${{ secrets.KFT_KEY_PASSWORD }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          if [ -n "$KFT_KEYSTORE_BASE64" ]; then
-            echo "$KFT_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/kft.jks"
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
             {
-              echo "KFT_KEYSTORE_PATH=$RUNNER_TEMP/kft.jks"
-              echo "KFT_KEYSTORE_PASSWORD=$KFT_KEYSTORE_PASSWORD"
-              echo "KFT_KEY_ALIAS=$KFT_KEY_ALIAS"
-              echo "KFT_KEY_PASSWORD=$KFT_KEY_PASSWORD"
+              echo "KEYSTORE_PATH=$RUNNER_TEMP/release.jks"
+              echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+              echo "KEY_ALIAS=$KEY_ALIAS"
+              echo "KEY_PASSWORD=$KEY_PASSWORD"
             } >> "$GITHUB_ENV"
             echo "Sabit imza anahtarı kullanılacak."
           else
-            echo "::warning::KFT_KEYSTORE_BASE64 secret tanımlı değil. APK rastgele debug anahtarıyla imzalanacak; güncellemek için eski sürümü kaldırmanız gerekir."
+            echo "::warning::KEYSTORE_BASE64 secret tanımlı değil. APK rastgele debug anahtarıyla imzalanacak."
           fi
 
-      # Her derlemede sürüm numarasını (run_number) 1 artırır
       - name: Sürüm numaralarını güncelle
         run: |
           VERSION_CODE=${{ github.run_number }}
@@ -63,7 +58,6 @@ jobs:
           sed -i "s/^\(\s*\)versionCode = .*/\1versionCode = ${VERSION_CODE}/" app/build.gradle.kts
           sed -i "s/^\(\s*\)versionName = .*/\1versionName = \"${VERSION_NAME}\"/" app/build.gradle.kts
 
-          echo "--- Güncel sürüm satırları ---"
           grep -E "versionCode|versionName" app/build.gradle.kts
 
           if ! grep -q "versionCode = ${VERSION_CODE}" app/build.gradle.kts; then
@@ -75,7 +69,6 @@ jobs:
             exit 1
           fi
 
-      # APK önce derlenip yüklenir; test hatası APK'yı engellemez.
       - name: Debug APK derle
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
@@ -99,7 +92,7 @@ jobs:
         continue-on-error: true
         run: |
           APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner
-          "$APKSIGNER" verify --print-certs "${{ steps.rename_apk.outputs.NEW_APK_PATH }}" | grep -E "Signer #1 certificate (DN|SHA-256)"
+          "$APKSIGNER" verify --print-certs "${{ steps.rename_apk.outputs.NEW_APK_PATH }}" | grep -E "Signer #1 certificate (DN|SHA-256)" || true
 
       - name: APK'yı yükle
         uses: actions/upload-artifact@v6
@@ -108,7 +101,6 @@ jobs:
           path: ${{ steps.rename_apk.outputs.NEW_APK_PATH }}
           if-no-files-found: error
 
-      # Birim testleri APK'dan sonra çalışır; hata olursa job kırmızı olur ama APK zaten yüklenmiştir.
       - name: Birim testleri
         run: ./gradlew testDebugUnitTest --no-daemon --stacktrace
 
@@ -120,7 +112,7 @@ jobs:
           import xml.etree.ElementTree as ET
           files = sorted(glob.glob("app/build/test-results/testDebugUnitTest/*.xml"))
           if not files:
-              print("Test sonuç dosyası yok: büyük olasılıkla test kodu derlenemedi. Log'daki 'e:' satırlarına bakın.")
+              print("Test sonuç dosyası yok: büyük olasılıkla test kodu derlenemedi.")
           failed = 0
           for f in files:
               for case in ET.parse(f).getroot().iter("testcase"):
