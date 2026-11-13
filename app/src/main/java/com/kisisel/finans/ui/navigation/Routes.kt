@@ -23,6 +23,9 @@ object Routes {
 
     const val ARG_OCCURRENCE_ID = "occurrenceId"
     const val ARG_TEMPLATE_ID = "templateId"
+    const val ARG_AGENDA_ID = "agendaId"
+    const val AGENDA = "agenda"
+    const val AGENDA_EDIT = "agenda_edit/{$ARG_AGENDA_ID}"
     const val INVOICE_DETAIL = "invoice/{$ARG_OCCURRENCE_ID}"
     const val INVOICE_EDIT = "invoice_edit/{$ARG_TEMPLATE_ID}"
 
@@ -32,6 +35,9 @@ object Routes {
     fun personEdit(id: Long) = "person_edit/$id"
 
     fun invoiceDetail(occurrenceId: Long) = "invoice/$occurrenceId"
+
+    /** id = 0 yeni ajanda notu ekler. */
+    fun agendaEdit(id: Long) = "agenda_edit/$id"
 
     /** templateId = 0 yeni fatura ekler. */
     fun invoiceEdit(templateId: Long) = "invoice_edit/$templateId"

@@ -10,6 +10,7 @@ import com.kisisel.finans.security.AppResetter
 import com.kisisel.finans.security.AuthResult
 import com.kisisel.finans.security.AuthService
 import com.kisisel.finans.security.SecuritySettings
+import com.kisisel.finans.reminder.ReminderPrefs
 import com.kisisel.finans.security.SecurityStore
 import com.kisisel.finans.ui.common.launchCatching
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -32,11 +33,20 @@ class SettingsViewModel @Inject constructor(
     private val store: SecurityStore,
     private val auth: AuthService,
     private val manager: AppLockManager,
-    private val resetter: AppResetter
+    private val resetter: AppResetter,
+    private val reminderPrefs: ReminderPrefs
 ) : ViewModel() {
 
     val settings: StateFlow<SecuritySettings> = store.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SecuritySettings())
+
+    /** Borç/alacak vade hatırlatmaları (varsayılan açık). */
+    val claimReminders: StateFlow<Boolean> = reminderPrefs.claimRemindersFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    fun setClaimReminders(value: Boolean) {
+        viewModelScope.launch { reminderPrefs.setClaimRemindersEnabled(value) }
+    }
 
     private val _legacyExists = MutableStateFlow(LegacyDatabaseMigrator.legacyExists(context))
     val legacyExists: StateFlow<Boolean> = _legacyExists.asStateFlow()

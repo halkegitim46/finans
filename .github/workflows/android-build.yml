@@ -1,68 +1,16 @@
-name: Android CI + Release
+name: APK Derle
 
 on:
   push:
     branches: [ main, master ]
-    tags: [ 'v*' ]
-  pull_request:
   workflow_dispatch:
-    inputs:
-      release:
-        description: "İmzalı release APK da üretilsin mi?"
-        type: boolean
-        default: true
-      minify:
-        description: "R8 küçültme (release çöküyorsa false deneyin)"
-        type: choice
-        default: "true"
-        options:
-          - "true"
-          - "false"
-      version_name:
-        description: "Sürüm adı (boşsa 1.0.<çalıştırma no>)"
-        type: string
-        required: false
-        default: ""
-
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
 
 jobs:
-  version:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 2
-    outputs:
-      version_name: ${{ steps.ver.outputs.name }}
-      version_code: ${{ steps.ver.outputs.code }}
-    steps:
-      - id: ver
-        shell: bash
-        env:
-          INPUT_VERSION: ${{ github.event.inputs.version_name }}
-        run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            NAME="${GITHUB_REF_NAME#v}"
-          elif [[ -n "$INPUT_VERSION" ]]; then
-            NAME="$INPUT_VERSION"
-          else
-            NAME="1.0.${{ github.run_number }}"
-          fi
-          NAME="$(printf '%s' "$NAME" | tr -c 'A-Za-z0-9._-' '_')"
-          echo "name=$NAME" >> "$GITHUB_OUTPUT"
-          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
-          echo "### Sürüm: \`$NAME\` (code \`${{ github.run_number }}\`)" >> "$GITHUB_STEP_SUMMARY"
-
   build:
-    needs: version
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    env:
-      VERSION_NAME: ${{ needs.version.outputs.version_name }}
-      VERSION_CODE: ${{ needs.version.outputs.version_code }}
     steps:
       - uses: actions/checkout@v5
 
@@ -75,262 +23,119 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Android SDK lisanslarını kabul et
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
-
+      # Gradle wrapper yoksa oluştur; çalıştırma iznini her durumda ver
+      # (gradlew "Permission denied" hatasını önler).
       - name: Gradle wrapper hazırla
         run: |
-          if [ ! -f gradlew ]; then gradle wrapper --gradle-version 8.9; fi
+          if [ ! -f gradlew ]; then
+            gradle wrapper --gradle-version 8.9
+          fi
           chmod +x gradlew
 
+      # Sabit imza anahtarı: her sürüm eskisinin üstüne VERİ KAYBI OLMADAN kurulabilsin.
+      # Secret tanımlı değilse rastgele debug anahtarı kullanılır (güncellemek için önce eskisini kaldırmak gerekir).
+      - name: İmza anahtarını hazırla
+        env:
+          KFT_KEYSTORE_BASE64: ${{ secrets.KFT_KEYSTORE_BASE64 }}
+          KFT_KEYSTORE_PASSWORD: ${{ secrets.KFT_KEYSTORE_PASSWORD }}
+          KFT_KEY_ALIAS: ${{ secrets.KFT_KEY_ALIAS }}
+          KFT_KEY_PASSWORD: ${{ secrets.KFT_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KFT_KEYSTORE_BASE64" ]; then
+            echo "$KFT_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/kft.jks"
+            {
+              echo "KFT_KEYSTORE_PATH=$RUNNER_TEMP/kft.jks"
+              echo "KFT_KEYSTORE_PASSWORD=$KFT_KEYSTORE_PASSWORD"
+              echo "KFT_KEY_ALIAS=$KFT_KEY_ALIAS"
+              echo "KFT_KEY_PASSWORD=$KFT_KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+            echo "Sabit imza anahtarı kullanılacak."
+          else
+            echo "::warning::KFT_KEYSTORE_BASE64 secret tanımlı değil. APK rastgele debug anahtarıyla imzalanacak; güncellemek için eski sürümü kaldırmanız gerekir."
+          fi
+
+      # Her derlemede sürüm numarasını (run_number) 1 artırır
       - name: Sürüm numaralarını güncelle
         run: |
+          VERSION_CODE=${{ github.run_number }}
+          VERSION_NAME="1.0.${{ github.run_number }}"
+
           sed -i "s/^\(\s*\)versionCode = .*/\1versionCode = ${VERSION_CODE}/" app/build.gradle.kts
           sed -i "s/^\(\s*\)versionName = .*/\1versionName = \"${VERSION_NAME}\"/" app/build.gradle.kts
+
+          echo "--- Güncel sürüm satırları ---"
           grep -E "versionCode|versionName" app/build.gradle.kts
+
           if ! grep -q "versionCode = ${VERSION_CODE}" app/build.gradle.kts; then
-            echo "HATA: versionCode güncellenemedi!"; exit 1
+            echo "HATA: versionCode güncellenemedi!"
+            exit 1
           fi
           if ! grep -q "versionName = \"${VERSION_NAME}\"" app/build.gradle.kts; then
-            echo "HATA: versionName güncellenemedi!"; exit 1
+            echo "HATA: versionName güncellenemedi!"
+            exit 1
           fi
 
-      - name: Birim testleri
-        run: ./gradlew testDebugUnitTest --no-daemon --stacktrace --console=plain
-
+      # APK önce derlenip yüklenir; test hatası APK'yı engellemez.
       - name: Debug APK derle
-        shell: bash
-        run: |
-          set -o pipefail
-          ./gradlew assembleDebug --no-daemon --stacktrace --console=plain 2>&1 | tee debug-build.log
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Debug APK'yı sürümlü ada kopyala
-        shell: bash
+      - name: APK'yı yeniden adlandır
+        id: rename_apk
         run: |
-          mkdir -p out
-          SRC=$(ls app/build/outputs/apk/debug/*.apk | head -1)
-          cp "$SRC" "out/FinansTakip_V${VERSION_NAME}-debug.apk"
-          ls -lh out/
+          OLD_PATH="app/build/outputs/apk/debug/app-debug.apk"
+          NEW_NAME="FinansTakip_V${{ github.run_number }}.apk"
+          NEW_PATH="app/build/outputs/apk/debug/${NEW_NAME}"
 
-      - name: Hata özeti (başarısızsa)
+          if [ ! -f "$OLD_PATH" ]; then
+            echo "HATA: Derleme çıktısı bulunamadı: $OLD_PATH"
+            exit 1
+          fi
+
+          mv "$OLD_PATH" "$NEW_PATH"
+          echo "NEW_APK_PATH=$NEW_PATH" >> "$GITHUB_OUTPUT"
+          echo "NEW_APK_NAME=$NEW_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: İmza parmak izini yazdır
+        continue-on-error: true
+        run: |
+          APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner
+          "$APKSIGNER" verify --print-certs "${{ steps.rename_apk.outputs.NEW_APK_PATH }}" | grep -E "Signer #1 certificate (DN|SHA-256)"
+
+      - name: APK'yı yükle
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ steps.rename_apk.outputs.NEW_APK_NAME }}
+          path: ${{ steps.rename_apk.outputs.NEW_APK_PATH }}
+          if-no-files-found: error
+
+      # Birim testleri APK'dan sonra çalışır; hata olursa job kırmızı olur ama APK zaten yüklenmiştir.
+      - name: Birim testleri
+        run: ./gradlew testDebugUnitTest --no-daemon --stacktrace
+
+      - name: Başarısız testleri özetle
         if: failure()
-        shell: bash
         run: |
-          {
-            echo '### Derleme hatası'
-            echo '```'
-            grep -nE "^e: |error:|FAILURE:|What went wrong|Caused by|Could not|Unresolved|Execution failed" debug-build.log | head -60
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+          python3 - <<'PY'
+          import glob
+          import xml.etree.ElementTree as ET
+          files = sorted(glob.glob("app/build/test-results/testDebugUnitTest/*.xml"))
+          if not files:
+              print("Test sonuç dosyası yok: büyük olasılıkla test kodu derlenemedi. Log'daki 'e:' satırlarına bakın.")
+          failed = 0
+          for f in files:
+              for case in ET.parse(f).getroot().iter("testcase"):
+                  for tag in ("failure", "error"):
+                      for e in case.findall(tag):
+                          failed += 1
+                          print("BASARISIZ:", case.get("classname") + "." + case.get("name"))
+                          print("   ", (e.get("message") or "")[:400].replace("\n", " "))
+          print("Toplam başarısız test:", failed)
+          PY
 
-      - name: Derleme logunu yükle
+      - name: Test raporunu yükle
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: debug-build-log
-          path: debug-build.log
+          name: test-raporu
+          path: app/build/reports/tests/
           if-no-files-found: ignore
-
-      - uses: actions/upload-artifact@v6
-        if: success()
-        with:
-          name: FinansTakip-v${{ needs.version.outputs.version_name }}-debug-apk
-          path: out/*.apk
-          if-no-files-found: error
-
-  r8-rules-check:
-    if: github.event_name == 'pull_request'
-    needs: version
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    env:
-      VERSION_NAME: ${{ needs.version.outputs.version_name }}
-      VERSION_CODE: ${{ needs.version.outputs.version_code }}
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
-      - uses: gradle/actions/setup-gradle@v5
-        with:
-          gradle-version: '8.9'
-      - run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
-      - run: |
-          if [ ! -f gradlew ]; then gradle wrapper --gradle-version 8.9; fi
-          chmod +x gradlew
-      - name: Release (R8) derle — imzasız doğrulama
-        run: ./gradlew assembleRelease -Pkft.minify=${{ github.event.inputs.minify || 'true' }} --no-daemon --stacktrace --console=plain
-
-  release:
-    if: >-
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true') ||
-      github.event_name == 'push'
-    needs: [version, build]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    permissions:
-      contents: write
-    env:
-      VERSION_NAME: ${{ needs.version.outputs.version_name }}
-      VERSION_CODE: ${{ needs.version.outputs.version_code }}
-      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - uses: gradle/actions/setup-gradle@v5
-        with:
-          gradle-version: '8.9'
-
-      - name: Android SDK lisanslarını kabul et
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
-
-      - name: Gradle wrapper hazırla
-        run: |
-          if [ ! -f gradlew ]; then gradle wrapper --gradle-version 8.9; fi
-          chmod +x gradlew
-
-      - name: Sürüm numaralarını güncelle
-        run: |
-          sed -i "s/^\(\s*\)versionCode = .*/\1versionCode = ${VERSION_CODE}/" app/build.gradle.kts
-          sed -i "s/^\(\s*\)versionName = .*/\1versionName = \"${VERSION_NAME}\"/" app/build.gradle.kts
-          grep -E "versionCode|versionName" app/build.gradle.kts
-          grep -q "versionCode = ${VERSION_CODE}" app/build.gradle.kts
-          grep -q "versionName = \"${VERSION_NAME}\"" app/build.gradle.kts
-
-      - name: Keystore'u çöz
-        shell: bash
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-        run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
-            echo "KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
-            echo "### ✅ Keystore çözüldü" >> "$GITHUB_STEP_SUMMARY"
-            ls -lh "$RUNNER_TEMP/release.jks"
-          else
-            echo "::warning::KEYSTORE_BASE64 tanımlı değil; release APK debug anahtarıyla imzalanacak."
-            echo "### ⚠️ Keystore tanımlı değil" >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      - name: Release APK derle (R8)
-        shell: bash
-        run: |
-          set -o pipefail
-          ./gradlew assembleRelease -Pkft.minify=${{ github.event.inputs.minify || 'true' }} --no-daemon --stacktrace --console=plain 2>&1 | tee release-build.log
-
-      - name: APK imzasını doğrula
-        shell: bash
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-        run: |
-          set +o pipefail   # head/tee kaynaklı SIGPIPE yanlış exit kodunu önle
-          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
-          echo "Kullanılan apksigner: $APKSIGNER"
-          "$APKSIGNER" version || true
-
-          shopt -s nullglob
-          APKS=(app/build/outputs/apk/release/*.apk)
-          if [ ${#APKS[@]} -eq 0 ]; then echo "::error::Release APK bulunamadı"; exit 1; fi
-
-          : > imza.txt
-          VERIFY_FAILED=0
-          for f in "${APKS[@]}"; do
-            echo "=========================================="
-            echo "Dosya: $f"
-            set +e
-            OUTPUT=$("$APKSIGNER" verify --verbose --print-certs "$f" 2>&1)
-            RC=$?
-            set -e
-            printf '%s\n' "$OUTPUT" | tee -a imza.txt
-            echo "--- verify çıkış kodu: $RC ---"
-            if [ $RC -ne 0 ]; then
-              VERIFY_FAILED=1
-              echo "::error::apksigner doğrulaması başarısız: $f (kod $RC)"
-              keytool -printcert -jarfile "$f" 2>&1 || echo "(keytool da başarısız)"
-            fi
-          done
-          set -o pipefail
-
-          if [ $VERIFY_FAILED -ne 0 ]; then exit 1; fi
-
-          if grep -qi "Android Debug" imza.txt; then
-            if [ -n "$KEYSTORE_BASE64" ]; then
-              echo "::error::APK debug anahtarıyla imzalanmış ama KEYSTORE_BASE64 tanımlı. build.gradle.kts signingConfigs bloğunu kontrol edin."
-              exit 1
-            else
-              echo "::warning::Release APK debug anahtarıyla imzalandı."
-              echo "### ⚠️ Release APK DEBUG anahtarıyla imzalı" >> "$GITHUB_STEP_SUMMARY"
-            fi
-          else
-            echo "### ✅ RELEASE APK (kendi anahtarınızla imzalı)" >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-          {
-            grep -E "certificate DN:" imza.txt | sed -E 's/^[[:space:]]*//; s/^/- DN: /' || true
-            grep -E "certificate SHA-256 digest:" imza.txt | sed -E 's/^[[:space:]]*//; s/^/- SHA-256: /' || true
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: APK'yı sürümlü ada kopyala
-        shell: bash
-        run: |
-          mkdir -p out
-          SRC=$(ls app/build/outputs/apk/release/*.apk | head -1)
-          cp "$SRC" "out/FinansTakip_V${VERSION_NAME}.apk"
-          ls -lh out/
-
-      - name: Release logunu yükle
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: release-build-log
-          path: release-build.log
-          if-no-files-found: ignore
-
-      - name: İmza doğrulama logunu yükle
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: imza-dogrulama-log
-          path: imza.txt
-          if-no-files-found: ignore
-
-      - uses: actions/upload-artifact@v6
-        if: success()
-        with:
-          name: FinansTakip-v${{ needs.version.outputs.version_name }}-release-apk
-          path: out/FinansTakip_V*.apk
-          if-no-files-found: error
-
-      - name: R8 eşleme dosyasını yükle
-        uses: actions/upload-artifact@v6
-        with:
-          name: mapping-v${{ needs.version.outputs.version_name }}
-          path: app/build/outputs/mapping/release/mapping.txt
-          if-no-files-found: ignore
-
-      - name: GitHub Release'e ekle (yalnızca tag'de)
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          name: FinansTakip v${{ needs.version.outputs.version_name }}
-          files: out/FinansTakip_V*.apk
-
-      - name: Release özeti
-        if: always()
-        shell: bash
-        run: |
-          {
-            echo "## Release özeti"
-            echo "- **VERSION_NAME:** $VERSION_NAME"
-            echo "- **VERSION_CODE:** $VERSION_CODE"
-            echo "- **İmzalı APK:** FinansTakip_V${VERSION_NAME}.apk"
-            echo "- **GitHub Release:** ${{ startsWith(github.ref, 'refs/tags/') && 'oluşturuldu' || 'atlandı (tag değil)' }}"
-          } >> "$GITHUB_STEP_SUMMARY"

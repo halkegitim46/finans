@@ -20,37 +20,33 @@ android {
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         resourceConfigurations += "tr"
-        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }   // SQLCipher yerel kütüphaneleri
     }
 
-    // Sabit imza anahtarı (CI'da GitHub Secrets'tan gelir).
-    // Ortam değişkenleri: KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
+    // Sabit imza anahtarı (CI'da GitHub Secrets'tan gelir). Aynı anahtar = her sürüm eskisinin üstüne veri kaybı olmadan kurulur.
     signingConfigs {
         create("shared") {
-            val keystorePath = System.getenv("KEYSTORE_PATH")
+            val keystorePath = System.getenv("KFT_KEYSTORE_PATH")
             if (keystorePath != null) {
                 storeFile = file(keystorePath)
-                storePassword = System.getenv("KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("KEY_ALIAS")
-                keyPassword = System.getenv("KEY_PASSWORD")
+                storePassword = System.getenv("KFT_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KFT_KEY_ALIAS")
+                keyPassword = System.getenv("KFT_KEY_PASSWORD")
             }
         }
     }
 
     buildTypes {
         debug {
-            if (System.getenv("KEYSTORE_PATH") != null) {
-                signingConfig = signingConfigs.getByName("shared")
-            }
+            if (System.getenv("KFT_KEYSTORE_PATH") != null) signingConfig = signingConfigs.getByName("shared")
         }
         release {
+            // R8 küçültme varsayılan açık; sorun çıkarsa -Pkft.minify=false ile kapatılabilir.
             val minify = (project.findProperty("kft.minify") as String?) != "false"
             isMinifyEnabled = minify
             isShrinkResources = minify
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            if (System.getenv("KEYSTORE_PATH") != null) {
-                signingConfig = signingConfigs.getByName("shared")
-            }
+            if (System.getenv("KFT_KEYSTORE_PATH") != null) signingConfig = signingConfigs.getByName("shared")
         }
     }
 
@@ -110,12 +106,14 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
 
+    // Cihaz/emülatör testleri (gerçek SQLCipher ve Android Keystore): "Cihaz testleri" workflow'u veya connectedDebugAndroidTest
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.coroutines.android)
 }
 
+// Başarısız testlerin ayrıntısı (hata mesajı ve yığın) CI log'unda görünsün.
 tasks.withType<Test>().configureEach {
     testLogging {
         events("failed")

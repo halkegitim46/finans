@@ -12,7 +12,8 @@ Kullanım için: [`docs/KULLANIM_KILAVUZU.md`](docs/KULLANIM_KILAVUZU.md) · Mim
 - **Alacak / borç**: borç verme/alma, kişi adına ödeme, kısmi ve toplu tahsilat/ödeme, kapatma, iptal. Tutarlar kuruş (`Long`).
 - **Faturalar**: elektrik, su, doğalgaz, internet, telefon, kira, aidat, kredi, diğer; sabit/değişken tutar; aylık/yıllık/özel tekrar;
   her dönem ayrı kayıt; fatura ödenince kişinin alacağına eklenir.
-- **Hatırlatmalar** (WorkManager): vadeden 7/3/1 gün önce, vade günü ve geciken faturalar için; bildirime dokununca fatura açılır.
+- **Hatırlatmalar** (WorkManager): fatura vadeleri (7/3/1 gün önce, vade günü, gecikme), **borç/alacak vadeleri** (3/1 gün önce, vade günü, gecikince 3 günde bir; Ayarlar'dan kapatılabilir) ve **ajanda notları** (tarih/saatli, zamanında / 1 saat / 1 gün önce); bildirime dokununca ilgili ekran açılır.
+- **Ajanda**: faturalar, vadesi olan borç/alacaklar ve kendi notlarınız gün gün tek zaman çizelgesinde; notlar tamamlanabilir, kişiye bağlanabilir, hatırlatıcı kurulabilir.
 - **Raporlar**: aylık/yıllık özet, önceki dönemle karşılaştırma, kişi dökümü, fatura ödeme geçmişi, tahsilat geçmişi,
   geciken/ödenmemiş kalemler; grafikler; **PDF** (açık sekme; Kişiler sekmesinde tek kişinin hesap dökümü) ve CSV (Excel) dışa aktarma.
 - **Güvenlik**: uygulama parolası (PBKDF2), PIN, biyometrik, arka planda kilit, ekran görüntüsü engeli, AES-256 şifreli veritabanı.
@@ -28,6 +29,10 @@ Kaynaklar: `app/src/main/res/drawable/ic_launcher_*.xml`; tasarım kaynağı (SV
 ama işi kırmızı yapar. Hata olursa "Başarısız testleri özetle" adımı kırılan testleri listeler, `test-raporu` artifact'ı ayrıntı içerir.
 
 Yerelde: Android Studio'da klasörü açın (JDK 17), `app` modülünü çalıştırın. Testler: `./gradlew testDebugUnitTest`.
+
+> **Veritabanı şema sürümü 2** (ajanda tablosu eklendi). Mevcut kurulumlar açılışta otomatik ve veri kaybı olmadan yükseltilir (`MigrationV2Test`).
+> Eski (sürüm 1) yedekler yeni sürümde geri yüklenebilir; sürüm 2 yedekler eski uygulama sürümünde açılmaz (güncelleme istenir).
+> Şema dosyasını (`app/schemas/.../2.json`) depoya işlemek için aşağıdaki workflow'u yeniden çalıştırın.
 
 ## Depo ilk kurulumu (bir kez): Gradle wrapper + Room şemaları
 Wrapper dosyaları (`gradlew`, `gradle/wrapper/*`) ve Room şemaları (`app/schemas/**`) depoda olmalı: aynı Gradle sürümüyle tekrarlanabilir derleme
@@ -78,6 +83,7 @@ Telefonda APK'yı açarken "bilinmeyen kaynak" izni ve Play Protect "yine de yü
 - Cihaz sıfırlanırsa veya Keystore anahtarı kaybolursa şifreli veritabanı açılamaz. Uygulama çökmek yerine bir **kurtarma ekranı** gösterir (tekrar dene / yazarak onaylanan sıfırlama); anahtarsız veri geri getirilemez, yedek bu yüzden şart. Anahtar dosyası eksikken mevcut veritabanı için asla yeni anahtar üretilmez.
 - Yedekleme manueldir; otomatik/zamanlanmış yedek yok. Dışa aktarma: Excel yerine CSV; PDF ve CSV dosyaları şifrelenmez.
 - PDF, Android'in yerleşik çizicisiyle üretilir (A4, sistem yazı tipi); sayfa görünümü cihazda elle kontrol edilmelidir.
+- Ajanda notu hatırlatmaları WorkManager ile planlanır; pil tasarrufu nedeniyle birkaç dakika gecikebilir (tam zamanlı alarm kullanılmaz). Telefon uzun süre kapalıysa 24 saatten eski not hatırlatmaları gönderilmez.
 - Hatırlatmalar yaklaşık 09:00'da, Android pil tasarrufuna göre gecikebilir; yalnızca seçilen "tam gün"ler bildirilir (telefon bir gün kapalıysa o günün 7/3/1 hatırlatması sonradan gönderilmez).
 - Uygulama açıkken gece yarısı geçerse ekranlar, uygulama arka plana alınıp tekrar açılınca güncellenir.
 - Tutar girişinde `1.500` binlik ayraç, `1.5` ondalık olarak yorumlanır; `1.500,50` ve `1500,50` biçimleri güvenlidir.

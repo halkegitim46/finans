@@ -16,3 +16,4 @@ Kaynak: `KISISelFinansTakip_Kod_Denetim_Raporu.md` (not: yüklenen dosyanın son
 | Kapsam netliği | **Uygulandı** | README'de kapsam cümlesi (muhasebe yazılımı değil) |
 | `app_settings` kullanılmıyor | **Belgelendi** | Şemada ve yedekte tutuluyor, ayrılmış alan olarak MIMARI'de açıklandı |
 | Büyük Compose dosyalarının bölünmesi | **Ertelendi** | İşlev riski yok; yeni özellikle birlikte ele alınabilir |
+| Ajanda tarzı hatırlatma | **Eklendi** | Ajanda ekranı, tarih/saatli notlar, borç/alacak vade hatırlatmaları (şema v2 + migration) |

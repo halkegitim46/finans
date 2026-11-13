@@ -205,3 +205,15 @@ Kilit/Kurulum → Ana Sayfa | Kişiler (liste→detay) | Faturalar (liste→deta
 3. "Proje dosyalarını tamamla" workflow'unu çalıştırıp yeni `app/schemas/.../<sürüm>.json` dosyasını depoya işleyin.
 4. `BackupCodec` sürümünü/uyumluluğunu gözden geçirin (eski yedekler yeni sürümde açılabilmeli); gerekirse doğrulayıcıyı güncelleyin.
 5. Eski sürümden gerçek veriyle yükseltme testi yazın (Robolectric + `MigrationTestHelper`); `MigrationsTest` ve `SchemaGuardTest` yeşil olmalı.
+
+## Ajanda (şema sürümü 2)
+- **Veri**: `agenda_items` (başlık, not, tarih=epochDay, saat=dakika veya null=gün boyu, kişi (FK RESTRICT), hatırlatma dakikası veya null, tamamlandı/doneAt, arşiv). Silme yok, arşiv.
+- **Migration 1→2**: yalnızca yeni tablo ve iki indeks; mevcut tablolara dokunmaz. SQL, Room'un ürettiğiyle birebir olmalıdır; `MigrationV2Test` sürüm 1 görünümlü bir dosyayı gerçekten yükseltir
+  (Room tüm şemayı doğrular), yabancı anahtar/indeksleri ve "migration yoksa yıkıcı geçiş yok" kuralını sınar.
+- **Yedek uyumu**: yedek dbVersion 2 → `agendaItems` zorunlu; dbVersion 1 yedekte ajanda alanı yoktur ve boş kabul edilir. Doğrulayıcı ajanda kurallarını da denetler
+  (benzersiz kimlik, başlık, kişi FK, tarih/saat aralığı, tamamlanma tutarlılığı). `replaceAll` silme sırası: ajanda → ödeme → … → kişi.
+- **`AgendaBuilder`** (saf): ödenmemiş faturalar + vadesi olan açık borç/alacaklar (faturadan doğanlar hariç) + açık notlar; sıralama: tarih → saat (gün boyu önce) → tür (fatura < alacak < not) → kimlik.
+- **Hatırlatma zamanı**: not için `date + (saat ?: 09:00) − önceden`; tam zamanlı alarm yok. `ReminderService.runAgenda()` zamanı gelmiş (≤ şimdi, en çok 24 saat eski) notları gönderir ve bir sonraki zaman için WorkManager tek seferlik iş planlar
+  (`AgendaReminderWorker`, benzersiz iş, REPLACE); not eklenince/değişince/tamamlanınca hemen yeniden hesaplanır. Günlük çalışma ve açılış kontrolü de ajandayı kapsar, böylece yeniden başlatma sonrası plan geri kurulur.
+- **Çift gönderim**: anahtar `a<id>:t<hatırlatma zamanı>`; not düzenlenip zamanı değişirse yeniden bildirilir. Borç/alacak anahtarı `c<id>:d<gün>|o<gecikme>`. Eski anahtarlar sahibine göre ("12", "c12", "a5") temizlenir.
+- **Bildirim hedefi**: ajanda notu → not ekranı, alacak/borç → kişi sayfası, fatura → fatura dönemi (`MainActivity` tek `pendingRoute`); kilit açılana kadar bekler.

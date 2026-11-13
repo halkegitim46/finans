@@ -3,6 +3,7 @@ package com.kisisel.finans.data.local.dao
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import com.kisisel.finans.data.local.entity.AgendaItemEntity
 import com.kisisel.finans.data.local.entity.AppSettingEntity
 import com.kisisel.finans.data.local.entity.InvoiceOccurrenceEntity
 import com.kisisel.finans.data.local.entity.InvoiceTemplateEntity
@@ -27,6 +28,10 @@ interface SnapshotDao {
     @Query("DELETE FROM persons") suspend fun deletePersons()
     @Query("DELETE FROM app_settings") suspend fun deleteSettings()
 
+    @Query("SELECT * FROM agenda_items ORDER BY id") suspend fun agendaItems(): List<AgendaItemEntity>
+    @Query("DELETE FROM agenda_items") suspend fun deleteAgendaItems()
+    @Insert suspend fun insertAgendaItems(items: List<AgendaItemEntity>)
+
     @Insert suspend fun insertPersons(items: List<PersonEntity>)
     @Insert suspend fun insertInvoiceTemplates(items: List<InvoiceTemplateEntity>)
     @Insert suspend fun insertInvoiceOccurrences(items: List<InvoiceOccurrenceEntity>)
@@ -37,7 +42,8 @@ interface SnapshotDao {
     @Query(
         "SELECT (SELECT COUNT(*) FROM persons) + (SELECT COUNT(*) FROM invoice_templates) + " +
             "(SELECT COUNT(*) FROM invoice_occurrences) + (SELECT COUNT(*) FROM transactions) + " +
-            "(SELECT COUNT(*) FROM payments) + (SELECT COUNT(*) FROM app_settings)"
+            "(SELECT COUNT(*) FROM payments) + (SELECT COUNT(*) FROM app_settings) + " +
+            "(SELECT COUNT(*) FROM agenda_items)"
     )
     suspend fun totalRows(): Int
 }

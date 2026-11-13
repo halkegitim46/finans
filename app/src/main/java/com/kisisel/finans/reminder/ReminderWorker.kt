@@ -28,3 +28,17 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
         if (runAttemptCount < 3) Result.retry() else Result.failure()
     }
 }
+
+/** Planlı ajanda hatırlatma kontrolü (bir sonraki not zamanında tek seferlik çalışır). */
+class AgendaReminderWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+
+    override suspend fun doWork(): Result = try {
+        val entryPoint = EntryPointAccessors.fromApplication(applicationContext, ReminderEntryPoint::class.java)
+        entryPoint.reminderService().runAgenda()
+        Result.success()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        if (runAttemptCount < 3) Result.retry() else Result.failure()
+    }
+}

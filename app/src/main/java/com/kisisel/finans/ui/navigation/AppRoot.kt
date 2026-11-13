@@ -19,6 +19,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.kisisel.finans.ui.agenda.AgendaEditScreen
+import com.kisisel.finans.ui.agenda.AgendaScreen
 import com.kisisel.finans.ui.common.NotificationPermissionPrompt
 import com.kisisel.finans.ui.home.HomeScreen
 import com.kisisel.finans.ui.invoices.InvoiceDetailScreen
@@ -33,15 +35,15 @@ import com.kisisel.finans.ui.transactions.TransactionsScreen
 
 @Composable
 fun AppRoot(
-    pendingOccurrenceId: Long? = null,
+    pendingRoute: String? = null,
     onPendingConsumed: () -> Unit = {}
 ) {
     val nav = rememberNavController()
 
-    // Bildirime dokunulunca ilgili fatura dönemini aç.
-    LaunchedEffect(pendingOccurrenceId) {
-        if (pendingOccurrenceId != null && pendingOccurrenceId > 0) {
-            nav.navigate(Routes.invoiceDetail(pendingOccurrenceId))
+    // Bildirime dokunulunca ilgili ekranı aç (fatura dönemi, kişi veya ajanda notu).
+    LaunchedEffect(pendingRoute) {
+        if (pendingRoute != null) {
+            nav.navigate(pendingRoute)
             onPendingConsumed()
         }
     }
@@ -53,6 +55,7 @@ fun AppRoot(
     val personArg = listOf(navArgument(Routes.ARG_PERSON_ID) { type = NavType.LongType })
     val occurrenceArg = listOf(navArgument(Routes.ARG_OCCURRENCE_ID) { type = NavType.LongType })
     val templateArg = listOf(navArgument(Routes.ARG_TEMPLATE_ID) { type = NavType.LongType })
+    val agendaArg = listOf(navArgument(Routes.ARG_AGENDA_ID) { type = NavType.LongType })
 
     val goTop: (String) -> Unit = { route ->
         nav.navigate(route) {
@@ -97,8 +100,23 @@ fun AppRoot(
                     onAddInvoice = { nav.navigate(Routes.invoiceEdit(0)) },
                     onAddPerson = { nav.navigate(Routes.personEdit(0)) },
                     onSeeInvoices = { goTop(Routes.INVOICES) },
-                    onSeeTransactions = { goTop(Routes.TRANSACTIONS) }
+                    onSeeTransactions = { goTop(Routes.TRANSACTIONS) },
+                    onSeeAgenda = { nav.navigate(Routes.AGENDA) },
+                    onAddAgenda = { nav.navigate(Routes.agendaEdit(0)) },
+                    onOpenAgendaNote = { nav.navigate(Routes.agendaEdit(it)) }
                 )
+            }
+            composable(Routes.AGENDA) {
+                AgendaScreen(
+                    onBack = { nav.popBackStack() },
+                    onOpenInvoice = { nav.navigate(Routes.invoiceDetail(it)) },
+                    onOpenPerson = { nav.navigate(Routes.personDetail(it)) },
+                    onOpenNote = { nav.navigate(Routes.agendaEdit(it)) },
+                    onAddNote = { nav.navigate(Routes.agendaEdit(0)) }
+                )
+            }
+            composable(Routes.AGENDA_EDIT, arguments = agendaArg) {
+                AgendaEditScreen(onBack = { nav.popBackStack() }, onDone = { nav.popBackStack() })
             }
             composable(Routes.PERSONS) {
                 PersonListScreen(

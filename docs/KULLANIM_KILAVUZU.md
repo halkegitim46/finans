@@ -41,6 +41,14 @@ Her faturada seçersiniz: 7 gün önce, 3 gün önce, 1 gün önce, vade günü 
 Bildirimde fatura adı, tutar ve son ödeme tarihi vardır; kilit ekranında yalnızca "Fatura hatırlatması" görünür. Dokununca ilgili fatura açılır
 (uygulama kilitliyse önce kilit açılır). Ödenmiş faturalar için bildirim gönderilmez. Bildirimler gelmezse Ayarlar → Bildirim ve Pil kısayollarını kullanın.
 
+## 5b. Ajanda ve notlar
+Ana Sayfa'daki **Ajanda** bölümünden veya "Ajanda notu" düğmesinden açılır. Ajanda; ödenmemiş faturalarınızı, vadesi olan borç/alacaklarınızı ve kendi notlarınızı **günlere göre** tek listede gösterir
+(Geciken → Bugün → Yarın → sonraki günler; 30 günden ilerisi "daha sonraki kayıtlar" olarak sayılır).
+- **Not ekle**: başlık, isteğe bağlı açıklama, tarih, **saat** (isteğe bağlı), ilgili kişi (isteğe bağlı) ve hatırlatma (hatırlatma yok / zamanında / 1 saat önce / 1 gün önce). Saat seçmezseniz hatırlatma o günün 09:00'unda yapılır.
+- Notun yanındaki kutuyla **tamamlandı** işaretlersiniz (geri alınabilir); tamamlananlar ayrı bölümde durur ve hatırlatma göndermez. Notu silerseniz arşivlenir.
+- Satıra dokununca fatura, kişi (borç/alacak) veya not düzenleme ekranı açılır.
+- **Borç/alacak vade hatırlatmaları**: vadesi olan açık borç/alacaklar için vadeden 3 ve 1 gün önce, vade günü ve gecikince 3 günde bir bildirim gelir (Ayarlar → Bildirimler ve pil'den kapatılabilir). Faturadan doğan alacaklar ayrıca hatırlatılmaz; fatura hatırlatması geçerlidir.
+
 ## 6. Ana Sayfa ve İşlemler
 Ana Sayfa: net bakiye, toplam alacak/borç, bu ay ödemeler ve tahsilatlar, geciken ve yaklaşan faturalar, son işlemler, hızlı işlemler.
 **İşlemler**: tüm kişilerin defteri; arama, tür filtresi, iptal edilenleri gösterme.

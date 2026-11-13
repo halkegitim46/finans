@@ -60,6 +60,7 @@ private enum class SettingsDialog { PASSWORD, PIN_SET, PIN_REMOVE, RESET, DELETE
 fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     val s by vm.settings.collectAsStateWithLifecycle()
     val legacyExists by vm.legacyExists.collectAsStateWithLifecycle()
+    val claimReminders by vm.claimReminders.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = remember(context) { context.findFragmentActivity() }
     val biometricAvailable = remember { BiometricHelper.isAvailable(context) }
@@ -143,6 +144,12 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             item {
                 Section("Bildirimler ve pil") {
                     SettingRow("Bildirim ayarları", onClick = { openNotificationSettings(context) })
+                    HorizontalDivider()
+                    SettingRow(
+                        title = "Borç/alacak vade hatırlatmaları",
+                        subtitle = "Vadeden 3 ve 1 gün önce, vade günü ve gecikince 3 günde bir",
+                        trailing = { Switch(checked = claimReminders, onCheckedChange = vm::setClaimReminders) }
+                    )
                     HorizontalDivider()
                     SettingRow(
                         title = "Pil optimizasyonu ayarları",

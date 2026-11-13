@@ -2,6 +2,7 @@ package com.kisisel.finans.backup
 
 import com.kisisel.finans.data.local.DatabaseSnapshot
 import com.kisisel.finans.data.local.KisiselFinansDatabase
+import com.kisisel.finans.data.local.entity.AgendaItemEntity
 import com.kisisel.finans.data.local.entity.AppSettingEntity
 import com.kisisel.finans.data.local.entity.InvoiceOccurrenceEntity
 import com.kisisel.finans.data.local.entity.InvoiceTemplateEntity
@@ -55,7 +56,8 @@ object BackupCodec {
             "invoiceOccurrences" to s.invoiceOccurrences.size,
             "transactions" to s.transactions.size,
             "payments" to s.payments.size,
-            "settings" to s.settings.size
+            "settings" to s.settings.size,
+            "agendaItems" to s.agendaItems.size
         )
     )
 
@@ -73,6 +75,7 @@ object BackupCodec {
             .put("transactions", array(s.transactions) { it.toJson() })
             .put("payments", array(s.payments) { it.toJson() })
             .put("settings", array(s.settings) { it.toJson() })
+            .put("agendaItems", array(s.agendaItems) { it.toJson() })
         return gzip(root.toString().toByteArray(Charsets.UTF_8))
     }
 
@@ -100,12 +103,15 @@ object BackupCodec {
                 invoiceOccurrences = root.getJSONArray("invoiceOccurrences").mapObjects(::occurrenceFrom),
                 transactions = root.getJSONArray("transactions").mapObjects(::transactionFrom),
                 payments = root.getJSONArray("payments").mapObjects(::paymentFrom),
-                settings = root.getJSONArray("settings").mapObjects(::settingFrom)
+                settings = root.getJSONArray("settings").mapObjects(::settingFrom),
+                // Sürüm 1 yedeklerinde ajanda yoktur.
+                agendaItems = if (dbVersion >= 2) root.getJSONArray("agendaItems").mapObjects(::agendaFrom) else emptyList()
             )
 
             val expected = metaOf(snapshot, createdAt).counts
             val declared = root.getJSONObject("counts")
             for ((key, count) in expected) {
+                if (key == "agendaItems" && dbVersion < 2) continue
                 if (declared.getInt(key) != count) throw FinanceException.BackupInvalid(INVALID)
             }
             return ParsedBackup(BackupMeta(formatVersion, dbVersion, createdAt, expected), snapshot)
@@ -212,4 +218,19 @@ object BackupCodec {
 
     private fun settingFrom(o: JSONObject) =
         AppSettingEntity(settingKey = o.getString("settingKey"), settingValue = o.getString("settingValue"))
+
+    private fun AgendaItemEntity.toJson() = JSONObject()
+        .put("id", id).put("title", title).put("note", note).put("date", date)
+        .putNullable("timeMinutes", timeMinutes).putNullable("personId", personId)
+        .putNullable("remindMinutesBefore", remindMinutesBefore).put("isDone", isDone)
+        .putNullable("doneAt", doneAt).put("isArchived", isArchived)
+        .put("createdAt", createdAt).put("updatedAt", updatedAt)
+
+    private fun agendaFrom(o: JSONObject) = AgendaItemEntity(
+        id = o.getLong("id"), title = o.getString("title"), note = o.getString("note"), date = o.getLong("date"),
+        timeMinutes = o.intOrNull("timeMinutes"), personId = o.longOrNull("personId"),
+        remindMinutesBefore = o.intOrNull("remindMinutesBefore"), isDone = o.getBoolean("isDone"),
+        doneAt = o.longOrNull("doneAt"), isArchived = o.getBoolean("isArchived"),
+        createdAt = o.getLong("createdAt"), updatedAt = o.getLong("updatedAt")
+    )
 }

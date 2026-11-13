@@ -1,6 +1,7 @@
 package com.kisisel.finans.data.local
 
 import androidx.room.withTransaction
+import com.kisisel.finans.data.local.entity.AgendaItemEntity
 import com.kisisel.finans.data.local.entity.AppSettingEntity
 import com.kisisel.finans.data.local.entity.InvoiceOccurrenceEntity
 import com.kisisel.finans.data.local.entity.InvoiceTemplateEntity
@@ -14,11 +15,13 @@ data class DatabaseSnapshot(
     val invoiceOccurrences: List<InvoiceOccurrenceEntity>,
     val transactions: List<TransactionEntity>,
     val payments: List<PaymentEntity>,
-    val settings: List<AppSettingEntity>
+    val settings: List<AppSettingEntity>,
+    /** Sürüm 2 ile eklendi; eski yedeklerde boş. Varsayılan değer, eski çağrıların derlenmesini korur. */
+    val agendaItems: List<AgendaItemEntity> = emptyList()
 ) {
     val totalRows: Int
         get() = persons.size + invoiceTemplates.size + invoiceOccurrences.size +
-            transactions.size + payments.size + settings.size
+            transactions.size + payments.size + settings.size + agendaItems.size
 }
 
 /** Veritabanının tam, tutarlı kopyası: dışa aktarma ve (kimlikler korunarak) içe aktarma. */
@@ -32,7 +35,8 @@ object DatabaseSnapshotter {
             invoiceOccurrences = d.invoiceOccurrences(),
             transactions = d.transactions(),
             payments = d.payments(),
-            settings = d.settings()
+            settings = d.settings(),
+            agendaItems = d.agendaItems()
         )
     }
 
@@ -40,7 +44,7 @@ object DatabaseSnapshotter {
 
     /**
      * Tek transaction: herhangi bir hata (ör. çakışan kimlik) tüm içe aktarmayı geri alır.
-     * Yabancı anahtar sırası: kişi → şablon → dönem → işlem → ödeme dağıtımı.
+     * Yabancı anahtar sırası: kişi → şablon → dönem → işlem → ödeme dağıtımı → ajanda.
      */
     suspend fun import(db: KisiselFinansDatabase, s: DatabaseSnapshot) {
         db.withTransaction {
@@ -50,6 +54,7 @@ object DatabaseSnapshotter {
             d.insertInvoiceOccurrences(s.invoiceOccurrences)
             d.insertTransactions(s.transactions)
             d.insertPayments(s.payments)
+            d.insertAgendaItems(s.agendaItems)
             d.insertSettings(s.settings)
         }
     }
@@ -57,11 +62,12 @@ object DatabaseSnapshotter {
     /**
      * Mevcut TÜM verileri siler ve snapshot'ı yükler; hepsi tek transaction'da.
      * Hata olursa (ör. tutarsız yabancı anahtar) önceki veriler olduğu gibi kalır.
-     * Silme sırası yabancı anahtar kısıtlarına uygundur (RESTRICT): ödeme → işlem → dönem → şablon → kişi.
+     * Silme sırası yabancı anahtar kısıtlarına uygundur (RESTRICT): ajanda → ödeme → işlem → dönem → şablon → kişi.
      */
     suspend fun replaceAll(db: KisiselFinansDatabase, s: DatabaseSnapshot) {
         db.withTransaction {
             val d = db.snapshotDao()
+            d.deleteAgendaItems()
             d.deletePayments()
             d.deleteTransactions()
             d.deleteInvoiceOccurrences()

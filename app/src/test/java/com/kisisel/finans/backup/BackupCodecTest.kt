@@ -2,6 +2,7 @@ package com.kisisel.finans.backup
 
 import com.kisisel.finans.data.local.DatabaseSnapshot
 import com.kisisel.finans.data.local.KisiselFinansDatabase
+import com.kisisel.finans.data.local.entity.AgendaItemEntity
 import com.kisisel.finans.data.local.entity.AppSettingEntity
 import com.kisisel.finans.data.local.entity.InvoiceOccurrenceEntity
 import com.kisisel.finans.data.local.entity.InvoiceTemplateEntity
@@ -143,6 +144,34 @@ class BackupCodecTest {
     @Test fun missingTableIsRejected() {
         val json = gunzipJson(BackupCodec.encode(snapshot, 1))
         json.remove("payments")
+        invalid(gzip(json))
+    }
+
+    @Test fun agendaItemsRoundTrip() {
+        val withAgenda = snapshot.copy(
+            agendaItems = listOf(
+                AgendaItemEntity(1, "Ahmet'i ara", "not \"x\"", 20_000, 870, 1, 60, false, null, false, 1, 2),
+                AgendaItemEntity(2, "Tamamlandı", "", 20_001, null, null, null, true, 5, true, 3, 4)
+            )
+        )
+        val parsed = BackupCodec.decode(BackupCodec.encode(withAgenda, 1))
+        assertEquals(withAgenda, parsed.snapshot)
+        assertEquals(2, parsed.meta.counts["agendaItems"])
+    }
+
+    @Test fun oldVersion1BackupWithoutAgendaStillDecodes() {
+        val json = gunzipJson(BackupCodec.encode(snapshot, 1))
+        json.put("dbVersion", 1)
+        json.remove("agendaItems")
+        json.getJSONObject("counts").remove("agendaItems")
+        val parsed = BackupCodec.decode(gzip(json))
+        assertEquals(snapshot.persons, parsed.snapshot.persons)
+        assertEquals(emptyList<AgendaItemEntity>(), parsed.snapshot.agendaItems)
+    }
+
+    @Test fun version2BackupMissingAgendaTableIsRejected() {
+        val json = gunzipJson(BackupCodec.encode(snapshot, 1))
+        json.remove("agendaItems")
         invalid(gzip(json))
     }
 }

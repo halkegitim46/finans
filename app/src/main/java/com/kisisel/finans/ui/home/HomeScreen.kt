@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kisisel.finans.agenda.AgendaEntry
 import com.kisisel.finans.core.Money
 import com.kisisel.finans.domain.model.DashboardTotals
 import com.kisisel.finans.domain.model.InvoiceOccurrence
@@ -43,6 +44,8 @@ import com.kisisel.finans.domain.model.LedgerLine
 import com.kisisel.finans.domain.model.PersonSummary
 import com.kisisel.finans.domain.model.TransactionType
 import com.kisisel.finans.ui.common.dialogTitle
+import com.kisisel.finans.ui.agenda.AgendaEntryCard
+import com.kisisel.finans.ui.agenda.agendaEntryKey
 import com.kisisel.finans.ui.common.NotificationsBanner
 import com.kisisel.finans.ui.common.rememberNotificationsEnabled
 import com.kisisel.finans.ui.common.dueStatusText
@@ -66,6 +69,9 @@ fun HomeScreen(
     onAddPerson: () -> Unit,
     onSeeInvoices: () -> Unit,
     onSeeTransactions: () -> Unit,
+    onSeeAgenda: () -> Unit,
+    onAddAgenda: () -> Unit,
+    onOpenAgendaNote: (Long) -> Unit,
     vm: HomeViewModel = hiltViewModel()
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -91,7 +97,28 @@ fun HomeScreen(
                     onBorrow = { dialog = HomeDialog.PickPerson(TransactionType.BORROW) },
                     onInvoice = onAddInvoice,
                     onPay = { dialog = HomeDialog.PickPaymentKind() },
-                    onCollect = { dialog = HomeDialog.PickPerson(TransactionType.COLLECTION) }
+                    onCollect = { dialog = HomeDialog.PickPerson(TransactionType.COLLECTION) },
+                    onAgenda = onAddAgenda
+                )
+            }
+
+            item {
+                SectionHeader("Ajanda: notlar ve vadeler", "Tümü", onSeeAgenda, isAlert = state.agendaOverdueCount > 0)
+            }
+            if (state.loaded && state.agenda.isEmpty()) {
+                item { Text("Ajandanızda yaklaşan not veya vade yok.", style = MaterialTheme.typography.bodyMedium) }
+            }
+            items(state.agenda, key = { "ag" + agendaEntryKey(it) }) { entry ->
+                AgendaEntryCard(
+                    entry = entry,
+                    today = state.today,
+                    onClick = {
+                        when (entry) {
+                            is AgendaEntry.Invoice -> onOpenOccurrence(entry.occurrence.id)
+                            is AgendaEntry.Claim -> onOpenPerson(entry.claim.personId)
+                            is AgendaEntry.Note -> onOpenAgendaNote(entry.item.id)
+                        }
+                    }
                 )
             }
 
@@ -217,7 +244,8 @@ private fun QuickActions(
     onBorrow: () -> Unit,
     onInvoice: () -> Unit,
     onPay: () -> Unit,
-    onCollect: () -> Unit
+    onCollect: () -> Unit,
+    onAgenda: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Hızlı işlemler", style = MaterialTheme.typography.titleMedium)
@@ -229,7 +257,10 @@ private fun QuickActions(
             FilledTonalButton(onClick = onInvoice, modifier = Modifier.weight(1f)) { Text("Fatura ekle") }
             FilledTonalButton(onClick = onPay, modifier = Modifier.weight(1f)) { Text("Ödeme yap") }
         }
-        Button(onClick = onCollect, modifier = Modifier.fillMaxWidth()) { Text("Tahsilat al") }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = onCollect, modifier = Modifier.weight(1f)) { Text("Tahsilat al") }
+            FilledTonalButton(onClick = onAgenda, modifier = Modifier.weight(1f)) { Text("Ajanda notu") }
+        }
     }
 }
 

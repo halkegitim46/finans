@@ -3,6 +3,7 @@ package com.kisisel.finans.data.di
 import android.content.Context
 import com.kisisel.finans.data.local.KisiselFinansDatabase
 import com.kisisel.finans.data.local.SecureDatabase
+import com.kisisel.finans.data.local.dao.AgendaDao
 import com.kisisel.finans.data.local.dao.InvoiceDao
 import com.kisisel.finans.data.local.dao.PaymentDao
 import com.kisisel.finans.data.local.dao.PersonDao
@@ -34,6 +35,7 @@ object DatabaseModule {
     @Provides fun provideInvoiceDao(db: KisiselFinansDatabase): InvoiceDao = db.invoiceDao()
     @Provides fun providePaymentDao(db: KisiselFinansDatabase): PaymentDao = db.paymentDao()
     @Provides fun provideSettingsDao(db: KisiselFinansDatabase): SettingsDao = db.settingsDao()
+    @Provides fun provideAgendaDao(db: KisiselFinansDatabase): AgendaDao = db.agendaDao()
 
     @Provides
     @Singleton

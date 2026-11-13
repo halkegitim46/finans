@@ -49,12 +49,16 @@ class AndroidReminderNotifier @Inject constructor(
 
         // Dokununca ilgili fatura dönemi açılır.
         val intent = Intent(context, MainActivity::class.java).apply {
-            putExtra(EXTRA_OCCURRENCE_ID, reminder.occurrenceId)
+            when {
+                reminder.agendaId != null -> putExtra(EXTRA_AGENDA_ID, reminder.agendaId)
+                reminder.personId != null -> putExtra(EXTRA_PERSON_ID, reminder.personId)
+                else -> putExtra(EXTRA_OCCURRENCE_ID, reminder.occurrenceId)
+            }
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         val pending = PendingIntent.getActivity(
             context,
-            reminder.occurrenceId.toInt(),
+            reminder.key.hashCode(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

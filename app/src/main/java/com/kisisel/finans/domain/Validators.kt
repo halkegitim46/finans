@@ -90,4 +90,17 @@ object Validators {
         if (days !in 0..30) invalid("Gecikme hatırlatma aralığı 0-30 gün olmalı.")
         return days
     }
+
+    fun agendaTitle(raw: String): String {
+        val t = raw.trim().split(' ').filter { it.isNotEmpty() }.joinToString(" ")
+        if (t.isEmpty()) invalid("Başlık boş olamaz.")
+        if (t.length > 100) invalid("Başlık en fazla 100 karakter olabilir.")
+        return t
+    }
+
+    /** Hatırlatma: null = yok, 0 = zamanında, 60 = 1 saat önce, 1440 = 1 gün önce. */
+    fun agendaRemind(minutes: Int?): Int? {
+        if (minutes != null && minutes !in setOf(0, 60, 1440)) invalid("Hatırlatma seçeneği geçersiz.")
+        return minutes
+    }
 }

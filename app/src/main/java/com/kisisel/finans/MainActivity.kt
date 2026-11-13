@@ -18,11 +18,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.kisisel.finans.core.DayTicker
+import com.kisisel.finans.reminder.EXTRA_AGENDA_ID
 import com.kisisel.finans.reminder.EXTRA_OCCURRENCE_ID
+import com.kisisel.finans.reminder.EXTRA_PERSON_ID
 import com.kisisel.finans.security.AppLockManager
 import com.kisisel.finans.security.SecurityStore
 import com.kisisel.finans.ui.lock.LockGate
 import com.kisisel.finans.ui.navigation.AppRoot
+import com.kisisel.finans.ui.navigation.Routes
 import com.kisisel.finans.ui.startup.StartupGate
 import com.kisisel.finans.ui.theme.KisiselFinansTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -38,13 +41,13 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var dayTicker: DayTicker
 
     /** Bildirime dokunulunca açılacak fatura dönemi. Uygulama kilitliyse kilit açılana kadar bekler. */
-    private var pendingOccurrence by mutableStateOf<Long?>(null)
+    private var pendingRoute by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setSecureScreen(true)   // ayarlar yüklenene kadar güvenli varsayılan
-        pendingOccurrence = extractOccurrence(intent)
+        pendingRoute = extractRoute(intent)
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.CREATED) {
@@ -62,10 +65,12 @@ class MainActivity : FragmentActivity() {
                         // Veritabanı doğrulanmadan uygulama içeriği oluşturulmaz (çökme yerine kurtarma ekranı).
                         StartupGate {
                             AppRoot(
-                                pendingOccurrenceId = pendingOccurrence,
+                                pendingRoute = pendingRoute,
                                 onPendingConsumed = {
-                                    pendingOccurrence = null
+                                    pendingRoute = null
                                     intent?.removeExtra(EXTRA_OCCURRENCE_ID)
+                                    intent?.removeExtra(EXTRA_PERSON_ID)
+                                    intent?.removeExtra(EXTRA_AGENDA_ID)
                                 }
                             )
                         }
@@ -90,7 +95,7 @@ class MainActivity : FragmentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        pendingOccurrence = extractOccurrence(intent)
+        pendingRoute = extractRoute(intent)
     }
 
     private fun setSecureScreen(enabled: Boolean) {
@@ -101,6 +106,12 @@ class MainActivity : FragmentActivity() {
         }
     }
 
-    private fun extractOccurrence(intent: Intent?): Long? =
-        intent?.getLongExtra(EXTRA_OCCURRENCE_ID, 0L)?.takeIf { it > 0 }
+    /** Bildirim hedefi: ajanda notu > kişi (alacak/borç vadesi) > fatura dönemi. */
+    private fun extractRoute(intent: Intent?): String? {
+        if (intent == null) return null
+        intent.getLongExtra(EXTRA_AGENDA_ID, 0L).takeIf { it > 0 }?.let { return Routes.agendaEdit(it) }
+        intent.getLongExtra(EXTRA_PERSON_ID, 0L).takeIf { it > 0 }?.let { return Routes.personDetail(it) }
+        intent.getLongExtra(EXTRA_OCCURRENCE_ID, 0L).takeIf { it > 0 }?.let { return Routes.invoiceDetail(it) }
+        return null
+    }
 }

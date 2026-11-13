@@ -130,6 +130,18 @@ object BackupSnapshotValidator {
             if (sum(TransactionType.DEBT_PAYMENT) > payable) bad("Kişi #${person.id} ödemeleri borcundan fazla")
         }
 
+        // ---- ajanda ----
+        val agendaIds = HashSet<Long>()
+        for (a in s.agendaItems) {
+            if (!agendaIds.add(a.id)) bad("Ajanda kaydı #${a.id} tekrar ediyor")
+            if (a.title.isBlank()) bad("Ajanda kaydı #${a.id} başlığı boş")
+            if (a.personId != null && a.personId !in personIds) bad("Ajanda kaydı #${a.id} olmayan kişiye bağlı")
+            if (badDay(a.date)) bad("Ajanda kaydı #${a.id} tarihi geçersiz")
+            if (a.timeMinutes != null && a.timeMinutes !in 0..1439) bad("Ajanda kaydı #${a.id} saati geçersiz")
+            if (a.remindMinutesBefore != null && a.remindMinutesBefore !in 0..10_080) bad("Ajanda kaydı #${a.id} hatırlatması geçersiz")
+            if (a.isDone != (a.doneAt != null)) bad("Ajanda kaydı #${a.id} tamamlanma bilgisi tutarsız")
+        }
+
         // ---- ayarlar ----
         val settingKeys = HashSet<String>()
         for (a in s.settings) {

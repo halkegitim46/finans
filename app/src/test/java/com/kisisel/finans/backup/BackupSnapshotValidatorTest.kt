@@ -2,6 +2,7 @@ package com.kisisel.finans.backup
 
 import com.kisisel.finans.core.Money
 import com.kisisel.finans.data.local.DatabaseSnapshot
+import com.kisisel.finans.data.local.entity.AgendaItemEntity
 import com.kisisel.finans.data.local.entity.AppSettingEntity
 import com.kisisel.finans.data.local.entity.InvoiceOccurrenceEntity
 import com.kisisel.finans.data.local.entity.InvoiceTemplateEntity
@@ -211,5 +212,27 @@ class BackupSnapshotValidatorTest {
     @Test fun messagesContainNoPersonalData() {
         val s = valid().copy(persons = listOf(person(1, name = "GizliAd Soyad"), person(2))).mapTx(1) { it.copy(amountKurus = -1) }
         assertTrue(BackupSnapshotValidator.validate(s).none { it.contains("GizliAd") })
+    }
+
+    // ---- ajanda ----
+    private fun agenda(id: Long = 1, personId: Long? = 1, title: String = "Ara", time: Int? = 870, remind: Int? = 60, done: Boolean = false, doneAt: Long? = null, date: Long = day) =
+        AgendaItemEntity(id = id, title = title, note = "", date = date, timeMinutes = time, personId = personId,
+            remindMinutesBefore = remind, isDone = done, doneAt = doneAt, isArchived = false, createdAt = 0, updatedAt = 0)
+
+    @Test fun validAgendaPasses() {
+        val v = valid().copy(agendaItems = listOf(agenda(1), agenda(2, personId = null, time = null, remind = null), agenda(3, done = true, doneAt = 5)))
+        assertEquals(emptyList<String>(), BackupSnapshotValidator.validate(v))
+    }
+
+    @Test fun agendaRules() {
+        val v = valid()
+        expect(v.copy(agendaItems = listOf(agenda(1), agenda(1))), "Ajanda kaydı #1 tekrar ediyor")
+        expect(v.copy(agendaItems = listOf(agenda(1, title = " "))), "başlığı boş")
+        expect(v.copy(agendaItems = listOf(agenda(1, personId = 99))), "olmayan kişiye bağlı")
+        expect(v.copy(agendaItems = listOf(agenda(1, date = 1))), "tarihi geçersiz")
+        expect(v.copy(agendaItems = listOf(agenda(1, time = 1440))), "saati geçersiz")
+        expect(v.copy(agendaItems = listOf(agenda(1, remind = -5))), "hatırlatması geçersiz")
+        expect(v.copy(agendaItems = listOf(agenda(1, done = true, doneAt = null))), "tamamlanma bilgisi tutarsız")
+        expect(v.copy(agendaItems = listOf(agenda(1, done = false, doneAt = 3))), "tamamlanma bilgisi tutarsız")
     }
 }

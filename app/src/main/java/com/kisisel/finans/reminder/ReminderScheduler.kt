@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit
 object ReminderScheduler {
     const val PERIODIC_WORK = "invoice_reminders_daily"
     const val ONCE_WORK = "invoice_reminders_now"
+    const val AGENDA_WORK = "agenda_reminder_next"
     const val DAILY_HOUR = 9
 
     /** Uygulama açılışında ve yeniden başlatma/güncelleme sonrasında çağrılır (tekrar çağrı güvenlidir). */
@@ -33,6 +34,25 @@ object ReminderScheduler {
         // Açılışta bir kez de kontrol et (kaçan günleri yakalamak için; çift bildirim kaydı ile engellenir).
         workManager.enqueueUniqueWork(ONCE_WORK, ExistingWorkPolicy.KEEP, OneTimeWorkRequestBuilder<ReminderWorker>().build())
     }
+
+    /**
+     * Bir sonraki ajanda hatırlatması için tek seferlik kontrol planlar (öncekinin yerine geçer).
+     * delayMillis null ise planlı kontrol iptal edilir. WorkManager gecikmesi pil tasarrufuna göre dakikalar sürebilir.
+     */
+    fun scheduleAgendaCheck(context: Context, delayMillis: Long?) {
+        val workManager = WorkManager.getInstance(context)
+        if (delayMillis == null) {
+            workManager.cancelUniqueWork(AGENDA_WORK)
+            return
+        }
+        val request = OneTimeWorkRequestBuilder<AgendaReminderWorker>()
+            .setInitialDelay(delayMillis, TimeUnit.MILLISECONDS)
+            .build()
+        workManager.enqueueUniqueWork(AGENDA_WORK, ExistingWorkPolicy.REPLACE, request)
+    }
+
+    /** Ajanda notu eklenince/değişince hemen kontrol et (bir sonraki zamanı da yeniden planlar). */
+    fun checkAgendaNow(context: Context) = scheduleAgendaCheck(context, 0L)
 
     /** Bir sonraki hour:00'a kadar milisaniye (tam o saatteyse ertesi gün). */
     fun initialDelayMillis(now: LocalDateTime, hour: Int): Long {
