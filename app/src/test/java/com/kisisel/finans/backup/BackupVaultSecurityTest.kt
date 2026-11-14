@@ -7,8 +7,16 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
-/** Kasa şifreleri yedek dosyasında yalnızca şifreli (AES-GCM) bulunur; doğru parola olmadan okunamaz. */
+/**
+ * Kasa şifreleri yedek dosyasında yalnızca şifreli (AES-GCM) bulunur; doğru parola olmadan okunamaz.
+ * Robolectric gerekir: BackupCodec org.json kullanır (düz JVM testinde Android'in boş taslağı gelir).
+ */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34], application = android.app.Application::class)
 class BackupVaultSecurityTest {
     private val secret = "ÇokGizli-Değer-12345"
     private val snapshot = DatabaseSnapshot(
