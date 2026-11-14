@@ -1,8 +1,12 @@
 name: Release APK (imzalı)
 
-# Elle çalıştırılır: Actions → "Release APK (imzalı)" → Run workflow.
+# Her push'ta OTOMATİK çalışır ("APK Derle" ile birlikte) ve istenirse elle de çalıştırılır:
+# Actions → "Release APK (imzalı)" → Run workflow. Çıkan APK, çalışmanın sayfasının altındaki "Artifacts" bölümündedir.
+# Otomatik çalışmada testler bu iş akışında tekrar koşulmaz ("APK Derle" zaten koşturur); elle çalıştırmada seçilebilir.
 # İmza secret'ları eksik/hatalıysa NEDENİNİ söyleyerek durur; asla rastgele debug anahtarıyla imzalamaz.
 on:
+  push:
+    branches: [ main, master ]
   workflow_dispatch:
     inputs:
       minify:
@@ -69,7 +73,7 @@ jobs:
 
       # require_tests=true ise release, testler geçmeden üretilmez.
       - name: Birim testleri
-        if: ${{ inputs.require_tests == 'true' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.require_tests == 'true' }}
         run: ./gradlew testDebugUnitTest --no-daemon --stacktrace
 
       - name: Başarısız testleri özetle
@@ -93,7 +97,7 @@ jobs:
           PY
 
       - name: Release APK derle
-        run: ./gradlew assembleRelease -Pkft.minify=${{ inputs.minify }} --no-daemon --stacktrace
+        run: ./gradlew assembleRelease -Pkft.minify=${{ inputs.minify || 'true' }} --no-daemon --stacktrace
 
       - name: İmzayı doğrula
         id: verify
