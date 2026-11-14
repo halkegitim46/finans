@@ -13,6 +13,7 @@ Kullanım için: [`docs/KULLANIM_KILAVUZU.md`](docs/KULLANIM_KILAVUZU.md) · Mim
 - **Faturalar**: elektrik, su, doğalgaz, internet, telefon, kira, aidat, kredi, diğer; sabit/değişken tutar; aylık/yıllık/özel tekrar;
   her dönem ayrı kayıt; fatura ödenince kişinin alacağına eklenir.
 - **Hatırlatmalar** (WorkManager): fatura vadeleri (7/3/1 gün önce, vade günü, gecikme), **borç/alacak vadeleri** (3/1 gün önce, vade günü, gecikince 3 günde bir; Ayarlar'dan kapatılabilir) ve **ajanda notları** (tarih/saatli, zamanında / 1 saat / 1 gün önce); bildirime dokununca ilgili ekran açılır.
+- **Şifre Kasası** (Ayarlar → Güvenlik): hesap/site/uygulama şifreleriniz şifreli veritabanında saklanır; açarken uygulama kilidinden bağımsız **yeniden doğrulama** (parola/PIN/biyometrik) istenir, arka plana geçince kilitlenir; şifreler varsayılan gizli, panoya kopyalama 30 sn sonra temizlenir; güçlü şifre üretici ve güç tahmini vardır. Şifreler yedeğe (yedek parolanızla şifrelenmiş olarak) dahildir.
 - **Ajanda**: faturalar, vadesi olan borç/alacaklar ve kendi notlarınız gün gün tek zaman çizelgesinde; notlar tamamlanabilir, kişiye bağlanabilir, hatırlatıcı kurulabilir.
 - **Raporlar**: aylık/yıllık özet, önceki dönemle karşılaştırma, kişi dökümü, fatura ödeme geçmişi, tahsilat geçmişi,
   geciken/ödenmemiş kalemler; grafikler; **PDF** (açık sekme; Kişiler sekmesinde tek kişinin hesap dökümü) ve CSV (Excel) dışa aktarma.
@@ -30,9 +31,9 @@ ama işi kırmızı yapar. Hata olursa "Başarısız testleri özetle" adımı k
 
 Yerelde: Android Studio'da klasörü açın (JDK 17), `app` modülünü çalıştırın. Testler: `./gradlew testDebugUnitTest`.
 
-> **Veritabanı şema sürümü 2** (ajanda tablosu eklendi). Mevcut kurulumlar açılışta otomatik ve veri kaybı olmadan yükseltilir (`MigrationV2Test`).
-> Eski (sürüm 1) yedekler yeni sürümde geri yüklenebilir; sürüm 2 yedekler eski uygulama sürümünde açılmaz (güncelleme istenir).
-> Şema dosyasını (`app/schemas/.../2.json`) depoya işlemek için aşağıdaki workflow'u yeniden çalıştırın.
+> **Veritabanı şema sürümü 3** (2: ajanda, 3: şifre kasası). Mevcut kurulumlar açılışta otomatik ve veri kaybı olmadan yükseltilir (`MigrationV2Test`, `MigrationV3Test`).
+> Eski (sürüm 1) yedekler yeni sürümde geri yüklenebilir; yeni sürüm yedekleri eski uygulama sürümünde açılmaz (güncelleme istenir).
+> Şema dosyasını (`app/schemas/.../3.json`) depoya işlemek için aşağıdaki workflow'u yeniden çalıştırın.
 
 ## Depo ilk kurulumu (bir kez): Gradle wrapper + Room şemaları
 Wrapper dosyaları (`gradlew`, `gradle/wrapper/*`) ve Room şemaları (`app/schemas/**`) depoda olmalı: aynı Gradle sürümüyle tekrarlanabilir derleme
@@ -60,10 +61,13 @@ Ardından *Settings → Secrets and variables → Actions* altına şu 4 secret'
 
 | Secret | Değer |
 |---|---|
-| `KFT_KEYSTORE_BASE64` | `kft.jks` dosyasının base64 çıktısı (`kft.jks.b64` içeriği) |
-| `KFT_KEYSTORE_PASSWORD` | anahtar deposu parolası |
-| `KFT_KEY_ALIAS` | `kft` |
-| `KFT_KEY_PASSWORD` | anahtar parolası (PKCS12'de depo parolasıyla aynı) |
+| `KEYSTORE_BASE64` | `kft.jks` dosyasının base64 çıktısı (`kft.jks.b64` içeriği) |
+| `KEYSTORE_PASSWORD` | anahtar deposu parolası |
+| `KEY_ALIAS` | `kft` |
+| `KEY_PASSWORD` | anahtar parolası (PKCS12'de depo parolasıyla aynı) |
+
+Secret adları **önek olmadan** `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` olmalıdır. Eski `KFT_` önekli adlar (`KFT_KEYSTORE_BASE64` …) geriye uyumluluk için hâlâ okunur; ikisi birden tanımlıysa öneksizler kullanılır.
+Gradle ve workflow'lar bu adları TEK yerden okur (`app/build.gradle.kts` içindeki `signingEnv` ve `.github/scripts/prepare-signing.sh`); eksik/hatalı değeri betik hangisi olduğunu söyleyerek bildirir.
 
 **`kft.jks` dosyasını ve parolaları güvenli bir yerde yedekleyin.** Kaybederseniz sürümleri üst üste kuramazsınız.
 Debug ve release derlemeleri aynı anahtarı kullanır; imza parmak izi her çalıştırmada log'a yazılır (aynı kalmalı).
@@ -100,3 +104,5 @@ Telefonda APK'yı açarken "bilinmeyen kaynak" izni ve Play Protect "yine de yü
 | "Uygulama yüklenemedi / paket çakışması" | Eski sürüm farklı anahtarla imzalı; kaldırıp yükleyin, sonra sabit anahtarı tanımlayın |
 | Bildirim gelmiyor | Ayarlar → Bildirim ayarları ve Pil optimizasyonu kısayollarını kullanın |
 | Release APK çöküyor | `minify=false` ile tekrar derleyin |
+| Debug APK çıktı, release çıkmadı | Release workflow'unda kırmızı ADIMI bakın: "İmza anahtarını hazırla" → secret adı/değeri hatalı (mesaj hangisini söyler); "Birim testleri" → test kırık (geçici olarak `require_tests=false`); "Release APK derle" → "Release hatası teşhisi" ve `release-raporlari` artifact'ı |
+| "Release imzası yok" hatası | KEYSTORE_PATH/KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD ortam değişkenleri yok; CI'da secrets tanımlı olmalı |

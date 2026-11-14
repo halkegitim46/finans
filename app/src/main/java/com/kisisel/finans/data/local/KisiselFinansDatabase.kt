@@ -8,6 +8,7 @@ import com.kisisel.finans.data.local.dao.PaymentDao
 import com.kisisel.finans.data.local.dao.PersonDao
 import com.kisisel.finans.data.local.dao.SettingsDao
 import com.kisisel.finans.data.local.dao.SnapshotDao
+import com.kisisel.finans.data.local.dao.VaultDao
 import com.kisisel.finans.data.local.dao.TransactionDao
 import com.kisisel.finans.data.local.entity.AgendaItemEntity
 import com.kisisel.finans.data.local.entity.AppSettingEntity
@@ -16,6 +17,7 @@ import com.kisisel.finans.data.local.entity.InvoiceTemplateEntity
 import com.kisisel.finans.data.local.entity.PaymentEntity
 import com.kisisel.finans.data.local.entity.PersonEntity
 import com.kisisel.finans.data.local.entity.TransactionEntity
+import com.kisisel.finans.data.local.entity.VaultItemEntity
 
 @Database(
     entities = [
@@ -25,7 +27,8 @@ import com.kisisel.finans.data.local.entity.TransactionEntity
         InvoiceOccurrenceEntity::class,
         PaymentEntity::class,
         AppSettingEntity::class,
-        AgendaItemEntity::class
+        AgendaItemEntity::class,
+        VaultItemEntity::class
     ],
     version = KisiselFinansDatabase.VERSION,
     exportSchema = true
@@ -38,12 +41,13 @@ abstract class KisiselFinansDatabase : RoomDatabase() {
     abstract fun settingsDao(): SettingsDao
     abstract fun snapshotDao(): SnapshotDao
     abstract fun agendaDao(): AgendaDao
+    abstract fun vaultDao(): VaultDao
 
     companion object {
         /** Eski (şifresiz) veritabanı dosya adı. Şifreli sürüm için bkz. SecureDatabase.ENC_NAME. */
         const val NAME = "kisisel_finans.db"
 
         /** Room şema sürümü; yedek dosyalarının uyumluluk kontrolünde de kullanılır. */
-        const val VERSION = 2
+        const val VERSION = 3
     }
 }

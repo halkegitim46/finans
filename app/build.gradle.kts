@@ -8,6 +8,13 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+// İmza bilgileri ortam değişkenlerinden okunur. GÜNCEL adlar: KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD.
+// Geriye uyumluluk için eski KFT_ önekli adlar da kabul edilir (KFT_KEYSTORE_PATH, ...). Tek yerde tanımlı: ad karışıklığı olmasın.
+fun signingEnv(name: String): String? =
+    (System.getenv(name) ?: System.getenv("KFT_$name"))?.takeIf { it.isNotBlank() }
+
+val keystorePath: String? = signingEnv("KEYSTORE_PATH")
+
 android {
     namespace = "com.kisisel.finans"
     compileSdk = 35
@@ -20,38 +27,39 @@ android {
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         resourceConfigurations += "tr"
-        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }   // SQLCipher yerel kütüphaneleri
     }
 
-    // Sabit imza anahtarı (CI'da GitHub Secrets'tan gelir).
-    // Ortam değişkenleri: KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
+    // Sabit imza anahtarı (CI'da GitHub Secrets'tan gelir). Aynı anahtar = her sürüm eskisinin üstüne veri kaybı olmadan kurulur.
     signingConfigs {
         create("shared") {
-            val keystorePath = System.getenv("KEYSTORE_PATH")
             if (keystorePath != null) {
-                storeFile = file(keystorePath)
-                storePassword = System.getenv("KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("KEY_ALIAS")
-                keyPassword = System.getenv("KEY_PASSWORD")
+                storeFile = file(requireNotNull(keystorePath))
+                storePassword = signingEnv("KEYSTORE_PASSWORD")
+                keyAlias = signingEnv("KEY_ALIAS")
+                keyPassword = signingEnv("KEY_PASSWORD")
             }
         }
     }
 
     buildTypes {
         debug {
-            if (System.getenv("KEYSTORE_PATH") != null) {
-                signingConfig = signingConfigs.getByName("shared")
-            }
+            if (keystorePath != null) signingConfig = signingConfigs.getByName("shared")
         }
         release {
+            // R8 küçültme varsayılan açık; sorun çıkarsa -Pkft.minify=false ile kapatılabilir.
             val minify = (project.findProperty("kft.minify") as String?) != "false"
             isMinifyEnabled = minify
             isShrinkResources = minify
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            if (System.getenv("KEYSTORE_PATH") != null) {
-                signingConfig = signingConfigs.getByName("shared")
-            }
+            if (keystorePath != null) signingConfig = signingConfigs.getByName("shared")
         }
+    }
+
+    // Lint raporu üretilir ama release derlemesini engellemez (ayrıntı: app/build/reports).
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
     }
 
     compileOptions {
@@ -110,16 +118,31 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
 
+    // Cihaz/emülatör testleri (gerçek SQLCipher ve Android Keystore): "Cihaz testleri" workflow'u veya connectedDebugAndroidTest
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.coroutines.android)
 }
 
+// Başarısız testlerin ayrıntısı (hata mesajı ve yığın) CI log'unda görünsün.
 tasks.withType<Test>().configureEach {
     testLogging {
         events("failed")
         exceptionFormat = TestExceptionFormat.FULL
         showStackTraces = true
+    }
+}
+
+// Release derlemesi imza bilgisi olmadan sessizce "unsigned" APK üretmesin: açık bir hata ver.
+gradle.taskGraph.whenReady {
+    val wantsRelease = allTasks.any { t ->
+        t.project == project && (t.name == "assembleRelease" || t.name == "bundleRelease" || t.name == "packageRelease")
+    }
+    if (wantsRelease && keystorePath == null) {
+        throw GradleException(
+            "Release imzası yok: KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS ve KEY_PASSWORD ortam değişkenleri tanımlı olmalı " +
+                "(CI'da secrets'tan .github/scripts/prepare-signing.sh yazar; ayrıntı: README 'İmza anahtarı'). Debug için assembleDebug kullanın."
+        )
     }
 }

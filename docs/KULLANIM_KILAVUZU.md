@@ -49,6 +49,16 @@ Ana Sayfa'daki **Ajanda** bölümünden veya "Ajanda notu" düğmesinden açıl�
 - Satıra dokununca fatura, kişi (borç/alacak) veya not düzenleme ekranı açılır.
 - **Borç/alacak vade hatırlatmaları**: vadesi olan açık borç/alacaklar için vadeden 3 ve 1 gün önce, vade günü ve gecikince 3 günde bir bildirim gelir (Ayarlar → Bildirimler ve pil'den kapatılabilir). Faturadan doğan alacaklar ayrıca hatırlatılmaz; fatura hatırlatması geçerlidir.
 
+## 5c. Şifre Kasası
+**Ayarlar → Güvenlik → Şifre Kasası**. Banka, e-posta, site, uygulama gibi hesap şifrelerinizi kaydedersiniz (başlık, kullanıcı adı, şifre, adres, not).
+- **Açma**: Kasa her açılışta uygulama parolanızı/PIN'inizi veya biyometrinizi ayrıca ister (uygulama kilidi açık olsa bile). Açıkken 2 dakika işlem yapmazsanız, uygulamadan çıkarsanız veya üstteki kilit simgesine dokunursanız kilitlenir. Kasadan geri çıkınca da kilitlenir.
+- **Görüntüleme**: Şifreler listede hiç görünmez; ayrıntıda varsayılan olarak gizlidir (göz simgesiyle gösterirsiniz).
+- **Kopyalama**: Kullanıcı adı/şifre kopyalama düğmeleri panoyu "hassas" olarak işaretler ve 30 saniye sonra temizler. (Uygulama bu sürede kapatılırsa pano kendiliğinden temizlenmez; panoyu elle temizleyin.)
+- **Güçlü şifre üret**: Düzenleme ekranında; uzunluk (8-40) ve karakter türleri seçilir; okunurluk için l, I, O, 0, 1 kullanılmaz. Güç göstergesi bir tahmindir, güvence değildir.
+- **Silme** arşivler: kayıt listeden kalkar ama yedekte kalır.
+- **Yedek**: Şifreler yedek dosyasına dahildir ve dosya yedek parolanızla şifrelenir. **Yedek parolanızı unutmayın ve güçlü seçin**; yedek dosyası + parolası şifrelerinizin tamamına erişim sağlar.
+- **Önemli**: Uygulama parolanızı unutursanız kasaya da girilemez (kurtarma yolu yoktur); verileri sıfırlamak kasayı da siler. Başka bir parola yöneticisinin yerine geçmeyi hedeflemez (otomatik doldurma, tarayıcı eklentisi, çok cihaz senkronu yoktur).
+
 ## 6. Ana Sayfa ve İşlemler
 Ana Sayfa: net bakiye, toplam alacak/borç, bu ay ödemeler ve tahsilatlar, geciken ve yaklaşan faturalar, son işlemler, hızlı işlemler.
 **İşlemler**: tüm kişilerin defteri; arama, tür filtresi, iptal edilenleri gösterme.

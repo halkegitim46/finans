@@ -26,7 +26,8 @@ object BiometricHelper {
     fun prompt(
         activity: FragmentActivity,
         onSuccess: () -> Unit,
-        onError: (String) -> Unit = {}
+        onError: (String) -> Unit = {},
+        subtitle: String = "Kilidi açmak için doğrulayın"
     ) {
         val callback = object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
@@ -44,7 +45,7 @@ object BiometricHelper {
         }
         val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle("Kişisel Finans Takip")
-            .setSubtitle("Kilidi açmak için doğrulayın")
+            .setSubtitle(subtitle)
             .setNegativeButtonText("Parola kullan")
             .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
             .build()

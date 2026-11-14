@@ -84,4 +84,24 @@ class InvoiceValidatorsTest {
         assertEquals(0, Validators.overdueInterval(0))
         assertThrows(FinanceException.InvalidInput::class.java) { Validators.overdueInterval(31) }
     }
+
+    @Test fun vaultTitle_trimsCollapsesAndBounds() {
+        assertEquals("Banka hesabı", Validators.vaultTitle("  Banka   hesabı "))
+        assertThrows(FinanceException.InvalidInput::class.java) { Validators.vaultTitle("   ") }
+        assertThrows(FinanceException.InvalidInput::class.java) { Validators.vaultTitle("a".repeat(101)) }
+    }
+
+    @Test fun vaultSecret_neverTrimmedButBounded() {
+        assertEquals(" a b ", Validators.vaultSecret(" a b "))
+        assertThrows(FinanceException.InvalidInput::class.java) { Validators.vaultSecret("") }
+        assertThrows(FinanceException.InvalidInput::class.java) { Validators.vaultSecret("x".repeat(1001)) }
+        assertEquals(1000, Validators.vaultSecret("x".repeat(1000)).length)
+    }
+
+    @Test fun vaultOtherFieldsAreBounded() {
+        assertEquals("ali", Validators.vaultUsername(" ali "))
+        assertThrows(FinanceException.InvalidInput::class.java) { Validators.vaultUsername("a".repeat(201)) }
+        assertThrows(FinanceException.InvalidInput::class.java) { Validators.vaultUrl("a".repeat(301)) }
+        assertThrows(FinanceException.InvalidInput::class.java) { Validators.vaultNote("a".repeat(2001)) }
+    }
 }

@@ -29,4 +29,5 @@ sealed class FinanceException(message: String) : Exception(message) {
     /** Yedek dosyası/parolası/içeriği ile ilgili kullanıcıya gösterilebilir hata. */
     class BackupInvalid(message: String) : FinanceException(message)
     class AgendaNotFound : FinanceException("Ajanda kaydı bulunamadı.")
+    class VaultItemNotFound : FinanceException("Kasa kaydı bulunamadı.")
 }

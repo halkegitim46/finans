@@ -103,4 +103,37 @@ object Validators {
         if (minutes != null && minutes !in setOf(0, 60, 1440)) invalid("Hatırlatma seçeneği geçersiz.")
         return minutes
     }
+
+    // ---- şifre kasası ----
+    fun vaultTitle(raw: String): String {
+        val t = raw.trim().split(' ').filter { it.isNotEmpty() }.joinToString(" ")
+        if (t.isEmpty()) invalid("Başlık boş olamaz.")
+        if (t.length > 100) invalid("Başlık en fazla 100 karakter olabilir.")
+        return t
+    }
+
+    fun vaultUsername(raw: String): String {
+        val t = raw.trim()
+        if (t.length > 200) invalid("Kullanıcı adı en fazla 200 karakter olabilir.")
+        return t
+    }
+
+    /** Şifre kırpılmaz (başında/sonunda boşluk bilinçli olabilir); yalnızca boş ve çok uzun reddedilir. */
+    fun vaultSecret(raw: String): String {
+        if (raw.isEmpty()) invalid("Şifre boş olamaz.")
+        if (raw.length > 1000) invalid("Şifre en fazla 1000 karakter olabilir.")
+        return raw
+    }
+
+    fun vaultUrl(raw: String): String {
+        val t = raw.trim()
+        if (t.length > 300) invalid("Adres en fazla 300 karakter olabilir.")
+        return t
+    }
+
+    fun vaultNote(raw: String): String {
+        val t = raw.trim()
+        if (t.length > 2000) invalid("Not en fazla 2000 karakter olabilir.")
+        return t
+    }
 }

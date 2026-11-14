@@ -8,6 +8,7 @@ import com.kisisel.finans.data.local.entity.InvoiceTemplateEntity
 import com.kisisel.finans.data.local.entity.PaymentEntity
 import com.kisisel.finans.data.local.entity.PersonEntity
 import com.kisisel.finans.data.local.entity.TransactionEntity
+import com.kisisel.finans.data.local.entity.VaultItemEntity
 
 data class DatabaseSnapshot(
     val persons: List<PersonEntity>,
@@ -17,11 +18,13 @@ data class DatabaseSnapshot(
     val payments: List<PaymentEntity>,
     val settings: List<AppSettingEntity>,
     /** Sürüm 2 ile eklendi; eski yedeklerde boş. Varsayılan değer, eski çağrıların derlenmesini korur. */
-    val agendaItems: List<AgendaItemEntity> = emptyList()
+    val agendaItems: List<AgendaItemEntity> = emptyList(),
+    /** Sürüm 3 ile eklendi; eski yedeklerde boş. */
+    val vaultItems: List<VaultItemEntity> = emptyList()
 ) {
     val totalRows: Int
         get() = persons.size + invoiceTemplates.size + invoiceOccurrences.size +
-            transactions.size + payments.size + settings.size + agendaItems.size
+            transactions.size + payments.size + settings.size + agendaItems.size + vaultItems.size
 }
 
 /** Veritabanının tam, tutarlı kopyası: dışa aktarma ve (kimlikler korunarak) içe aktarma. */
@@ -36,7 +39,8 @@ object DatabaseSnapshotter {
             transactions = d.transactions(),
             payments = d.payments(),
             settings = d.settings(),
-            agendaItems = d.agendaItems()
+            agendaItems = d.agendaItems(),
+            vaultItems = d.vaultItems()
         )
     }
 
@@ -55,6 +59,7 @@ object DatabaseSnapshotter {
             d.insertTransactions(s.transactions)
             d.insertPayments(s.payments)
             d.insertAgendaItems(s.agendaItems)
+            d.insertVaultItems(s.vaultItems)
             d.insertSettings(s.settings)
         }
     }
@@ -68,6 +73,7 @@ object DatabaseSnapshotter {
         db.withTransaction {
             val d = db.snapshotDao()
             d.deleteAgendaItems()
+            d.deleteVaultItems()
             d.deletePayments()
             d.deleteTransactions()
             d.deleteInvoiceOccurrences()

@@ -57,7 +57,7 @@ private enum class SettingsDialog { PASSWORD, PIN_SET, PIN_REMOVE, RESET, DELETE
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(onOpenVault: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
     val s by vm.settings.collectAsStateWithLifecycle()
     val legacyExists by vm.legacyExists.collectAsStateWithLifecycle()
     val claimReminders by vm.claimReminders.collectAsStateWithLifecycle()
@@ -81,6 +81,12 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         ) {
             item {
                 Section("Güvenlik") {
+                    SettingRow(
+                        title = "Şifre Kasası",
+                        subtitle = "Kişisel şifrelerinizi şifreli saklayın; açarken yeniden doğrulama istenir",
+                        onClick = onOpenVault
+                    )
+                    HorizontalDivider()
                     SettingRow("Parolayı değiştir", onClick = { dialog = SettingsDialog.PASSWORD })
                     HorizontalDivider()
                     SettingRow(

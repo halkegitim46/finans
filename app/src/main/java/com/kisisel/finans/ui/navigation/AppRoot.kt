@@ -21,6 +21,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.kisisel.finans.ui.agenda.AgendaEditScreen
 import com.kisisel.finans.ui.agenda.AgendaScreen
+import com.kisisel.finans.ui.vault.VaultEditScreen
+import com.kisisel.finans.ui.vault.VaultItemScreen
+import com.kisisel.finans.ui.vault.VaultListScreen
 import com.kisisel.finans.ui.common.NotificationPermissionPrompt
 import com.kisisel.finans.ui.home.HomeScreen
 import com.kisisel.finans.ui.invoices.InvoiceDetailScreen
@@ -56,6 +59,7 @@ fun AppRoot(
     val occurrenceArg = listOf(navArgument(Routes.ARG_OCCURRENCE_ID) { type = NavType.LongType })
     val templateArg = listOf(navArgument(Routes.ARG_TEMPLATE_ID) { type = NavType.LongType })
     val agendaArg = listOf(navArgument(Routes.ARG_AGENDA_ID) { type = NavType.LongType })
+    val vaultArg = listOf(navArgument(Routes.ARG_VAULT_ID) { type = NavType.LongType })
 
     val goTop: (String) -> Unit = { route ->
         nav.navigate(route) {
@@ -106,6 +110,19 @@ fun AppRoot(
                     onOpenAgendaNote = { nav.navigate(Routes.agendaEdit(it)) }
                 )
             }
+            composable(Routes.VAULT) {
+                VaultListScreen(
+                    onBack = { nav.popBackStack() },
+                    onOpenItem = { nav.navigate(Routes.vaultItem(it)) },
+                    onAdd = { nav.navigate(Routes.vaultEdit(0)) }
+                )
+            }
+            composable(Routes.VAULT_ITEM, arguments = vaultArg) {
+                VaultItemScreen(onBack = { nav.popBackStack() }, onEdit = { nav.navigate(Routes.vaultEdit(it)) })
+            }
+            composable(Routes.VAULT_EDIT, arguments = vaultArg) {
+                VaultEditScreen(onBack = { nav.popBackStack() }, onDone = { nav.popBackStack() })
+            }
             composable(Routes.AGENDA) {
                 AgendaScreen(
                     onBack = { nav.popBackStack() },
@@ -147,7 +164,7 @@ fun AppRoot(
                 TransactionsScreen(onOpenPerson = { nav.navigate(Routes.personDetail(it)) })
             }
             composable(Routes.REPORTS) { ReportsScreen() }
-            composable(Routes.SETTINGS) { SettingsScreen() }
+            composable(Routes.SETTINGS) { SettingsScreen(onOpenVault = { nav.navigate(Routes.VAULT) }) }
 
             composable(Routes.PERSON_DETAIL, arguments = personArg) {
                 PersonDetailScreen(

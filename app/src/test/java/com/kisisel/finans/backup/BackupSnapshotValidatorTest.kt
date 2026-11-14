@@ -3,6 +3,7 @@ package com.kisisel.finans.backup
 import com.kisisel.finans.core.Money
 import com.kisisel.finans.data.local.DatabaseSnapshot
 import com.kisisel.finans.data.local.entity.AgendaItemEntity
+import com.kisisel.finans.data.local.entity.VaultItemEntity
 import com.kisisel.finans.data.local.entity.AppSettingEntity
 import com.kisisel.finans.data.local.entity.InvoiceOccurrenceEntity
 import com.kisisel.finans.data.local.entity.InvoiceTemplateEntity
@@ -234,5 +235,29 @@ class BackupSnapshotValidatorTest {
         expect(v.copy(agendaItems = listOf(agenda(1, remind = -5))), "hatırlatması geçersiz")
         expect(v.copy(agendaItems = listOf(agenda(1, done = true, doneAt = null))), "tamamlanma bilgisi tutarsız")
         expect(v.copy(agendaItems = listOf(agenda(1, done = false, doneAt = 3))), "tamamlanma bilgisi tutarsız")
+    }
+
+    // ---- şifre kasası ----
+    private fun vault(id: Long = 1, title: String = "Banka", secret: String = "x", username: String = "", url: String = "", note: String = "") =
+        VaultItemEntity(id, title, username, secret, url, note, false, 0, 0)
+
+    @Test fun validVaultPasses() {
+        val v = valid().copy(vaultItems = listOf(vault(1), vault(2, username = "a".repeat(200), secret = "s".repeat(1000), url = "u".repeat(300), note = "n".repeat(2000))))
+        assertEquals(emptyList<String>(), BackupSnapshotValidator.validate(v))
+    }
+
+    @Test fun vaultRules() {
+        val v = valid()
+        expect(v.copy(vaultItems = listOf(vault(1), vault(1))), "Kasa kaydı #1 tekrar ediyor")
+        expect(v.copy(vaultItems = listOf(vault(1, title = " "))), "başlığı boş")
+        expect(v.copy(vaultItems = listOf(vault(1, secret = ""))), "şifresi boş")
+        expect(v.copy(vaultItems = listOf(vault(1, title = "t".repeat(101)))), "alan uzunlukları geçersiz")
+        expect(v.copy(vaultItems = listOf(vault(1, secret = "s".repeat(1001)))), "alan uzunlukları geçersiz")
+        expect(v.copy(vaultItems = listOf(vault(1, note = "n".repeat(2001)))), "alan uzunlukları geçersiz")
+    }
+
+    @Test fun vaultProblemMessagesNeverContainTheSecret() {
+        val v = valid().copy(vaultItems = listOf(vault(1, title = " ", secret = "GizliDeger-42")))
+        assertTrue(BackupSnapshotValidator.validate(v).none { it.contains("GizliDeger-42") })
     }
 }

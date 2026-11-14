@@ -142,6 +142,17 @@ object BackupSnapshotValidator {
             if (a.isDone != (a.doneAt != null)) bad("Ajanda kaydı #${a.id} tamamlanma bilgisi tutarsız")
         }
 
+        // ---- şifre kasası ----
+        val vaultIds = HashSet<Long>()
+        for (v in s.vaultItems) {
+            if (!vaultIds.add(v.id)) bad("Kasa kaydı #${v.id} tekrar ediyor")
+            if (v.title.isBlank()) bad("Kasa kaydı #${v.id} başlığı boş")
+            if (v.secret.isEmpty()) bad("Kasa kaydı #${v.id} şifresi boş")
+            if (v.title.length > 100 || v.username.length > 200 || v.secret.length > 1000 || v.url.length > 300 || v.note.length > 2000) {
+                bad("Kasa kaydı #${v.id} alan uzunlukları geçersiz")
+            }
+        }
+
         // ---- ayarlar ----
         val settingKeys = HashSet<String>()
         for (a in s.settings) {

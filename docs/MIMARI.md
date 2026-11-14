@@ -217,3 +217,12 @@ Kilit/Kurulum → Ana Sayfa | Kişiler (liste→detay) | Faturalar (liste→deta
   (`AgendaReminderWorker`, benzersiz iş, REPLACE); not eklenince/değişince/tamamlanınca hemen yeniden hesaplanır. Günlük çalışma ve açılış kontrolü de ajandayı kapsar, böylece yeniden başlatma sonrası plan geri kurulur.
 - **Çift gönderim**: anahtar `a<id>:t<hatırlatma zamanı>`; not düzenlenip zamanı değişirse yeniden bildirilir. Borç/alacak anahtarı `c<id>:d<gün>|o<gecikme>`. Eski anahtarlar sahibine göre ("12", "c12", "a5") temizlenir.
 - **Bildirim hedefi**: ajanda notu → not ekranı, alacak/borç → kişi sayfası, fatura → fatura dönemi (`MainActivity` tek `pendingRoute`); kilit açılana kadar bekler.
+
+## Şifre kasası (şema sürümü 3)
+- **Veri**: `vault_items` (başlık, kullanıcı adı, şifre, adres, not, arşiv bayrağı). Silme yok, arşiv. Migration 2→3 yalnızca yeni tablo + indeks; `MigrationV3Test` sürüm 2 görünümlü dosyayı gerçekten yükseltir (Room tüm şemayı doğrular) ve "migration yoksa yıkıcı geçiş yok" kuralını sınar.
+- **Koruma katmanları** (güvenlik modeli): (1) veritabanı SQLCipher/AES-256, anahtar Android Keystore ile sarılı; (2) uygulama kilidi; (3) **kasa için ayrı yeniden doğrulama** (`VaultAccess`: 2 dk pencere, arka plana geçince/elle/çıkışta kilit; `VaultGate` içerik ve şifreleri yükleyen ViewModel'leri yalnızca açıkken oluşturur);
+  (4) liste yalnızca `VaultSummary` (şifre alanı yok) kullanır, şifre sadece ayrıntı/düzenleme için yüklenir; (5) `toString` şifreyi maskeler; (6) pano hassas işaretli ve 30 sn sonra temizlenir; (7) ekran görüntüsü engeli ayarı kasayı da kapsar.
+- **Bilinçli ödünleşim**: şifre alanı ayrıca alan düzeyinde Keystore ile şifrelenmez; çünkü yedek başka cihazda geri yüklenebilmeli (Keystore anahtarı cihaza bağlıdır). Yedek dosyası kendi parolasıyla AES-256-GCM şifrelidir.
+  Tehdit modeli: kilitli/çalınmış cihaz ve dosya sızıntısı korunur; kilidi açık cihazda kasa yeniden doğrulama ister; kök (root) erişimli kötü amaçlı yazılım ve ekran kaydı kapsam dışıdır.
+- **Yedek uyumu**: dbVersion 3 yedekte `vaultItems` zorunlu; dbVersion 1-2 yedeklerde yoktur ve boş kabul edilir. Doğrulayıcı kasa kurallarını (benzersiz kimlik, başlık/şifre dolu, alan uzunlukları) denetler; hata iletileri şifre içermez.
+- **Şifre üretici**: `SecureRandom`, seçilen her sınıftan en az bir karakter, Fisher-Yates karıştırma; güç tahmini entropi + yaygın şifre/tekrar cezası (`PasswordStrength`).

@@ -1,5 +1,6 @@
 name: Cihaz testleri (emülatör)
 
+# Elle çalıştırılır. Gerçek SQLCipher (şifreli veritabanı) ve Android Keystore testlerini emülatörde koşar.
 on:
   workflow_dispatch:
 

@@ -9,6 +9,7 @@ import com.kisisel.finans.data.local.dao.PaymentDao
 import com.kisisel.finans.data.local.dao.PersonDao
 import com.kisisel.finans.data.local.dao.SettingsDao
 import com.kisisel.finans.data.local.dao.TransactionDao
+import com.kisisel.finans.data.local.dao.VaultDao
 import com.kisisel.finans.security.DatabaseKeyStore
 import dagger.Module
 import dagger.Provides
@@ -36,6 +37,7 @@ object DatabaseModule {
     @Provides fun providePaymentDao(db: KisiselFinansDatabase): PaymentDao = db.paymentDao()
     @Provides fun provideSettingsDao(db: KisiselFinansDatabase): SettingsDao = db.settingsDao()
     @Provides fun provideAgendaDao(db: KisiselFinansDatabase): AgendaDao = db.agendaDao()
+    @Provides fun provideVaultDao(db: KisiselFinansDatabase): VaultDao = db.vaultDao()
 
     @Provides
     @Singleton

@@ -9,6 +9,7 @@ import com.kisisel.finans.data.local.entity.InvoiceTemplateEntity
 import com.kisisel.finans.data.local.entity.PaymentEntity
 import com.kisisel.finans.data.local.entity.PersonEntity
 import com.kisisel.finans.data.local.entity.TransactionEntity
+import com.kisisel.finans.data.local.entity.VaultItemEntity
 import com.kisisel.finans.domain.FinanceException
 import com.kisisel.finans.domain.model.InvoiceType
 import com.kisisel.finans.domain.model.OccurrenceStatus
@@ -57,7 +58,8 @@ object BackupCodec {
             "transactions" to s.transactions.size,
             "payments" to s.payments.size,
             "settings" to s.settings.size,
-            "agendaItems" to s.agendaItems.size
+            "agendaItems" to s.agendaItems.size,
+            "vaultItems" to s.vaultItems.size
         )
     )
 
@@ -76,6 +78,7 @@ object BackupCodec {
             .put("payments", array(s.payments) { it.toJson() })
             .put("settings", array(s.settings) { it.toJson() })
             .put("agendaItems", array(s.agendaItems) { it.toJson() })
+            .put("vaultItems", array(s.vaultItems) { it.toJson() })
         return gzip(root.toString().toByteArray(Charsets.UTF_8))
     }
 
@@ -105,13 +108,16 @@ object BackupCodec {
                 payments = root.getJSONArray("payments").mapObjects(::paymentFrom),
                 settings = root.getJSONArray("settings").mapObjects(::settingFrom),
                 // Sürüm 1 yedeklerinde ajanda yoktur.
-                agendaItems = if (dbVersion >= 2) root.getJSONArray("agendaItems").mapObjects(::agendaFrom) else emptyList()
+                agendaItems = if (dbVersion >= 2) root.getJSONArray("agendaItems").mapObjects(::agendaFrom) else emptyList(),
+                // Sürüm 1-2 yedeklerinde kasa yoktur.
+                vaultItems = if (dbVersion >= 3) root.getJSONArray("vaultItems").mapObjects(::vaultFrom) else emptyList()
             )
 
             val expected = metaOf(snapshot, createdAt).counts
             val declared = root.getJSONObject("counts")
             for ((key, count) in expected) {
                 if (key == "agendaItems" && dbVersion < 2) continue
+                if (key == "vaultItems" && dbVersion < 3) continue
                 if (declared.getInt(key) != count) throw FinanceException.BackupInvalid(INVALID)
             }
             return ParsedBackup(BackupMeta(formatVersion, dbVersion, createdAt, expected), snapshot)
@@ -232,5 +238,16 @@ object BackupCodec {
         remindMinutesBefore = o.intOrNull("remindMinutesBefore"), isDone = o.getBoolean("isDone"),
         doneAt = o.longOrNull("doneAt"), isArchived = o.getBoolean("isArchived"),
         createdAt = o.getLong("createdAt"), updatedAt = o.getLong("updatedAt")
+    )
+
+    private fun VaultItemEntity.toJson() = JSONObject()
+        .put("id", id).put("title", title).put("username", username).put("secret", secret)
+        .put("url", url).put("note", note).put("isArchived", isArchived)
+        .put("createdAt", createdAt).put("updatedAt", updatedAt)
+
+    private fun vaultFrom(o: JSONObject) = VaultItemEntity(
+        id = o.getLong("id"), title = o.getString("title"), username = o.getString("username"),
+        secret = o.getString("secret"), url = o.getString("url"), note = o.getString("note"),
+        isArchived = o.getBoolean("isArchived"), createdAt = o.getLong("createdAt"), updatedAt = o.getLong("updatedAt")
     )
 }

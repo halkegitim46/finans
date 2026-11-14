@@ -24,6 +24,10 @@ object Routes {
     const val ARG_OCCURRENCE_ID = "occurrenceId"
     const val ARG_TEMPLATE_ID = "templateId"
     const val ARG_AGENDA_ID = "agendaId"
+    const val ARG_VAULT_ID = "vaultId"
+    const val VAULT = "vault"
+    const val VAULT_ITEM = "vault_item/{$ARG_VAULT_ID}"
+    const val VAULT_EDIT = "vault_edit/{$ARG_VAULT_ID}"
     const val AGENDA = "agenda"
     const val AGENDA_EDIT = "agenda_edit/{$ARG_AGENDA_ID}"
     const val INVOICE_DETAIL = "invoice/{$ARG_OCCURRENCE_ID}"
@@ -38,6 +42,11 @@ object Routes {
 
     /** id = 0 yeni ajanda notu ekler. */
     fun agendaEdit(id: Long) = "agenda_edit/$id"
+
+    fun vaultItem(id: Long) = "vault_item/$id"
+
+    /** id = 0 yeni kasa kaydı ekler. */
+    fun vaultEdit(id: Long) = "vault_edit/$id"
 
     /** templateId = 0 yeni fatura ekler. */
     fun invoiceEdit(templateId: Long) = "invoice_edit/$templateId"

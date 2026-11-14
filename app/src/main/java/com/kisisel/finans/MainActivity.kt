@@ -25,6 +25,7 @@ import com.kisisel.finans.security.AppLockManager
 import com.kisisel.finans.security.SecurityStore
 import com.kisisel.finans.ui.lock.LockGate
 import com.kisisel.finans.ui.navigation.AppRoot
+import com.kisisel.finans.vault.VaultAccess
 import com.kisisel.finans.ui.navigation.Routes
 import com.kisisel.finans.ui.startup.StartupGate
 import com.kisisel.finans.ui.theme.KisiselFinansTheme
@@ -39,6 +40,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var lockManager: AppLockManager
     @Inject lateinit var securityStore: SecurityStore
     @Inject lateinit var dayTicker: DayTicker
+    @Inject lateinit var vaultAccess: VaultAccess
 
     /** Bildirime dokunulunca açılacak fatura dönemi. Uygulama kilitliyse kilit açılana kadar bekler. */
     private var pendingRoute by mutableStateOf<String?>(null)
@@ -87,6 +89,7 @@ class MainActivity : FragmentActivity() {
     }
 
     override fun onStop() {
+        vaultAccess.lock()   // arka plana geçince şifre kasası kilitlenir
         // Ekran döndürme gibi yapılandırma değişiklikleri kilitlemeyi tetiklemesin.
         if (!isChangingConfigurations) lockManager.onBackgrounded(SystemClock.elapsedRealtime())
         super.onStop()
