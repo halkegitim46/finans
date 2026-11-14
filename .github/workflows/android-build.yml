@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       release:
-        description: "İmzalı release APK da üretilsin mi?"
+        description: "Release APK da üretilsin mi? (KAPATMAK için işareti kaldırın)"
         type: boolean
         default: true
       minify:
@@ -33,8 +33,7 @@ permissions:
 
 # ============================================================
 # 0) PREFLIGHT — Derlemeden ÖNCE ortamı denetler.
-#    Burada kırmızı olan bir şey varsa, derleme zaten patlayacaktır;
-#    en azından nedenini erkenden görürsünüz.
+#    Secret'ları, dosyaları, sed uyumunu ve imza bloğunu raporlar.
 # ============================================================
 jobs:
   preflight:
@@ -55,12 +54,11 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || secrets.KFT_KEY_PASSWORD }}
         run: |
           echo "::group::Secret durumu (yalnızca VAR/YOK, değer yok)"
-          has_ks="false"
+          has_ks="true"
           if [ -n "${KEYSTORE_BASE64:-}" ]; then
             echo "  [VAR] KEYSTORE_BASE64 (uzunluk: ${#KEYSTORE_BASE64})"
-            has_ks="true"
           else
-            echo "  [YOK] KEYSTORE_BASE64  -> release APK üretilemez"
+            echo "  [YOK] KEYSTORE_BASE64  -> release APK üretilemez"; has_ks="false"
           fi
           if [ -n "${KEYSTORE_PASSWORD:-}" ]; then echo "  [VAR] KEYSTORE_PASSWORD (uzunluk: ${#KEYSTORE_PASSWORD})"; else echo "  [YOK] KEYSTORE_PASSWORD"; has_ks="false"; fi
           if [ -n "${KEY_ALIAS:-}" ];        then echo "  [VAR] KEY_ALIAS = ${KEY_ALIAS}";                     else echo "  [YOK] KEY_ALIAS";        has_ks="false"; fi
@@ -86,11 +84,7 @@ jobs:
           for f in app/build.gradle.kts proguard-rules.pro gradle/wrapper/gradle-wrapper.properties; do
             if [ -f "$f" ]; then echo "  [VAR]   $f"; else echo "  [YOK]   $f"; fi
           done
-          if [ -f gradlew ]; then
-            echo "  [VAR]   gradlew"
-          else
-            echo "  [YOK]   gradlew — workflow üretecek (sorun değil)"
-          fi
+          if [ -f gradlew ]; then echo "  [VAR]   gradlew"; else echo "  [YOK]   gradlew — workflow üretecek (sorun değil)"; fi
           echo "::endgroup::"
 
       - name: "🔎 [preflight] build.gradle.kts sed uyumu"
@@ -150,14 +144,13 @@ jobs:
           else
             NAME="1.0.${{ github.run_number }}"
           fi
-          # Dosya adına güvenli karakterler
           NAME="$(printf '%s' "$NAME" | tr -c 'A-Za-z0-9._-' '_')"
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
           echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
           echo "### Sürüm: \`$NAME\` (code \`${{ github.run_number }}\`)" >> "$GITHUB_STEP_SUMMARY"
 
 # ============================================================
-# 2) BUILD — testler + debug APK
+# 2) BUILD — testler + debug APK (release'i BLOKE ETMEZ)
 # ============================================================
   build:
     needs: version
@@ -188,7 +181,6 @@ jobs:
           ./gradlew --version
 
       - name: "🧰 [build] Sürüm numaralarını güncelle"
-        id: bump
         shell: bash
         run: |
           cp app/build.gradle.kts app/build.gradle.kts.orig
@@ -201,17 +193,14 @@ jobs:
           grep -nE 'versionCode|versionName' app/build.gradle.kts
           echo "::endgroup::"
           if ! grep -q "versionCode = ${VERSION_CODE}" app/build.gradle.kts; then
-            echo "::error::versionCode sed ile güncellenemedi. app/build.gradle.kts'de satır formatı uyumsuz."
-            exit 1
+            echo "::error::versionCode sed ile güncellenemedi. app/build.gradle.kts'de satır formatı uyumsuz."; exit 1
           fi
           if ! grep -q "versionName = \"${VERSION_NAME}\"" app/build.gradle.kts; then
-            echo "::error::versionName sed ile güncellenemedi."
-            exit 1
+            echo "::error::versionName sed ile güncellenemedi."; exit 1
           fi
           diff -u app/build.gradle.kts.orig app/build.gradle.kts || true
 
-      # NOT: Testler artık AYRI adım. Kırmızı olsa bile debug APK üretilir,
-      # sadece "test kırmızı" olarak görünür ve release job'ı BLOKE OLMAZ.
+      # Testler AYRI adım + continue-on-error: kırmızı olsa bile debug APK üretilir.
       - name: "🧪 [build] Birim testleri"
         id: tests
         shell: bash
@@ -220,14 +209,11 @@ jobs:
           set -o pipefail
           ./gradlew testDebugUnitTest --no-daemon --stacktrace --console=plain 2>&1 | tee unit-tests.log
           rc=$?
-          echo "test_rc=$rc" >> "$GITHUB_OUTPUT"
-          # başarısız testleri özetle (Summary'ye)
           if [ -d app/build/test-results/testDebugUnitTest ]; then
             python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY" || true
           import glob, xml.etree.ElementTree as ET
           files = sorted(glob.glob("app/build/test-results/testDebugUnitTest/*.xml"))
-          failed = 0
-          lines = []
+          failed = 0; lines = []
           for f in files:
               for case in ET.parse(f).getroot().iter("testcase"):
                   for tag in ("failure", "error"):
@@ -239,6 +225,250 @@ jobs:
           else:
               print(f"### 🧪 Birim testleri — başarısız: {failed}\n")
               print("\n".join(lines) if lines else "Tüm testler geçti.")
+          PY
+          fi
+          exit $rc
+
+      - name: "📦 [build] Debug APK derle"
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew assembleDebug --no-daemon --stacktrace --console=plain 2>&1 | tee debug-build.log
+
+      - name: "📦 [build] Debug APK'yı kopyala"
+        shell: bash
+        run: |
+          mkdir -p out
+          SRC=$(ls app/build/outputs/apk/debug/*.apk 2>/dev/null | head -1 || true)
+          if [ -z "$SRC" ]; then
+            echo "::error::Debug APK üretilmedi! app/build/outputs/apk/debug/ boş."
+            ls -la app/build/outputs/apk/debug/ 2>/dev/null || echo "(klasör yok)"
+            exit 1
+          fi
+          cp "$SRC" "out/FinansTakip_V${VERSION_NAME}-debug.apk"
+          ls -lh out/
+
+      - name: "🩺 [build] Hata özeti (derleme başarısızsa)"
+        if: failure()
+        shell: bash
+        run: |
+          {
+            echo "## ❌ Build hatası"
+            echo '```'
+            grep -nE "^e: |error:|FAILURE:|What went wrong|Caused by|Could not|Unresolved|Execution failed|> Task .* FAILED" \
+              unit-tests.log debug-build.log 2>/dev/null | head -80
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "📤 [build] Log ve diff artifact'ları"
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: build-diagnostics
+          path: |
+            unit-tests.log
+            debug-build.log
+            app/build.gradle.kts.orig
+            app/build.gradle.kts
+          if-no-files-found: ignore
+
+      - uses: actions/upload-artifact@v6
+        if: success()
+        with:
+          name: FinansTakip-v${{ needs.version.outputs.version_name }}-debug-apk
+          path: out/*.apk
+          if-no-files-found: error
+
+# ============================================================
+# 3) RELEASE — imzalı APK
+#    • build job'ına BAĞIMLI DEĞİL (testler kırmızı olsa bile release üretilebilir)
+#    • workflow_dispatch'te release checkbox'ı BİLEREK kapatılmadıkça ÇALIŞIR
+#    • push ve tag'de otomatik çalışır
+#    • ilk adım TEŞHİS: hangi event/ref/inputs geldiğini yazar
+# ============================================================
+  release:
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.release != 'false')
+    needs: [preflight, version]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    env:
+      VERSION_NAME: ${{ needs.version.outputs.version_name }}
+      VERSION_CODE: ${{ needs.version.outputs.version_code }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || secrets.KFT_KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS || secrets.KFT_KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || secrets.KFT_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: "🔎 [release] Teşhis — bu job neden çalıştı?"
+        shell: bash
+        run: |
+          echo "event_name         : ${{ github.event_name }}"
+          echo "ref                : ${{ github.ref }}"
+          echo "ref_name           : ${{ github.ref_name }}"
+          echo "inputs.release     : ${{ github.event.inputs.release }}"
+          echo "inputs.minify      : ${{ github.event.inputs.minify }}"
+          echo "inputs.version_name: ${{ github.event.inputs.version_name }}"
+          echo "preflight.has_keystore: ${{ needs.preflight.outputs.has_keystore }}"
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-version: '8.9'
+
+      - name: "🧰 [release] Android SDK lisansları"
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+      - name: "🧰 [release] Gradle wrapper hazırla"
+        run: |
+          if [ ! -f gradlew ]; then gradle wrapper --gradle-version 8.9; fi
+          chmod +x gradlew
+          ./gradlew --version
+
+      - name: "🧰 [release] Sürüm numaralarını güncelle"
+        shell: bash
+        run: |
+          sed -i "s/^\(\s*\)versionCode = .*/\1versionCode = ${VERSION_CODE}/" app/build.gradle.kts
+          sed -i "s/^\(\s*\)versionName = .*/\1versionName = \"${VERSION_NAME}\"/" app/build.gradle.kts
+          grep -nE 'versionCode|versionName' app/build.gradle.kts
+          if ! grep -q "versionCode = ${VERSION_CODE}" app/build.gradle.kts; then
+            echo "::error::versionCode sed ile güncellenemedi"; exit 1
+          fi
+          if ! grep -q "versionName = \"${VERSION_NAME}\"" app/build.gradle.kts; then
+            echo "::error::versionName sed ile güncellenemedi"; exit 1
+          fi
+
+      # prepare-signing.sh GÖMÜLÜ — görevi:
+      #   1) KEYSTORE_BASE64 -> $RUNNER_TEMP/release.jks
+      #   2) KEYSTORE_PATH / _PASSWORD / KEY_ALIAS / KEY_PASSWORD -> $GITHUB_ENV
+      #   3) keytool -list ile keystore'un açılabildiğini doğrula
+      #   4) Eksik/bozuksa ANLAŞILIR hatayla dur
+      - name: "🔐 [release] Keystore'u çöz ve doğrula (gömülü hazırlık)"
+        id: keystore
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 || secrets.KFT_KEYSTORE_BASE64 }}
+        run: |
+          echo "::group::1) Base64 -> JKS çözme"
+          if [ -z "${KEYSTORE_BASE64:-}" ]; then
+            echo "::error::KEYSTORE_BASE64 secret'ı tanımlı değil. Release APK üretilemez."
+            echo "  Çözüm: generate-keystore.yml ile anahtar üretin ve Settings → Secrets → Actions'a ekleyin."
+            exit 1
+          fi
+          CLEAN_B64=$(printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]')
+          if ! printf '%s' "$CLEAN_B64" | base64 --decode > "$RUNNER_TEMP/release.jks" 2>/dev/null; then
+            echo "::error::KEYSTORE_BASE64 base64 olarak çözülemedi. Tek satır, boşluksuz olmalı (base64 -w0 kft.jks)."
+            exit 1
+          fi
+          size=$(stat -c%s "$RUNNER_TEMP/release.jks")
+          echo "Çözülen keystore: $RUNNER_TEMP/release.jks ($size bayt)"
+          if [ "$size" -lt 100 ]; then
+            echo "::error::Çözülen keystore çok küçük ($size bayt). Base64 değeri bozuk olabilir."
+            exit 1
+          fi
+          echo "::endgroup::"
+
+          echo "::group::2) Ortam değişkenlerini sonraki adımlara aktar"
+          {
+            echo "KEYSTORE_PATH=$RUNNER_TEMP/release.jks"
+            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+            echo "KEY_ALIAS=$KEY_ALIAS"
+            echo "KEY_PASSWORD=$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+          echo "  -> \$GITHUB_ENV'ye yazıldı"
+          echo "::endgroup::"
+
+          echo "::group::3) keytool ile doğrula (alias gerçekten var mı?)"
+          for v in KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!v:-}" ]; then
+              echo "::error::$v boş! Settings → Secrets'ta tanımlı olmalı."
+              exit 1
+            fi
+          done
+          if ! keytool -list -keystore "$RUNNER_TEMP/release.jks" \
+                -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" > /dev/null 2>&1; then
+            echo "::error::Keystore açılamadı veya '$KEY_ALIAS' alias'ı yok. KEYSTORE_PASSWORD veya KEY_ALIAS hatalı."
+            exit 1
+          fi
+          echo "  ✅ Keystore ve '$KEY_ALIAS' alias'ı doğrulandı."
+          echo "::endgroup::"
+
+      - name: "🔎 [release] Ortam ön kontrolü"
+        shell: bash
+        run: |
+          echo "KEYSTORE_PATH    : $([ -n "${KEYSTORE_PATH:-}" ] && echo "VAR ($KEYSTORE_PATH)" || echo YOK)"
+          echo "KEYSTORE_PASSWORD: $([ -n "${KEYSTORE_PASSWORD:-}" ] && echo VAR || echo YOK)"
+          echo "KEY_ALIAS        : ${KEY_ALIAS:-YOK}"
+          echo "KEY_PASSWORD     : $([ -n "${KEY_PASSWORD:-}" ] && echo VAR || echo YOK)"
+          if [ -z "${KEYSTORE_PATH:-}" ] || [ ! -f "${KEYSTORE_PATH:-}" ]; then
+            echo "::error::KEYSTORE_PATH tanımlı değil veya dosya yok — assembleRelease GradleException atacak."
+            exit 1
+          fi
+
+      - name: "📦 [release] Release APK derle (R8)"
+        id: assemble_release
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew assembleRelease -Pkft.minify=${{ github.event.inputs.minify || 'true' }} \
+            --no-daemon --stacktrace --console=plain 2>&1 | tee release-build.log
+
+      - name: "🩺 [release] Derleme hatası özeti"
+        if: failure()
+        shell: bash
+        run: |
+          {
+            echo "## ❌ Release derleme hatası"
+            echo '```'
+            grep -nE "^e: |error:|FAILURE:|What went wrong|Caused by|Could not|Unresolved|Execution failed|> Task .* FAILED|GradleException|Release imzası yok" \
+              release-build.log 2>/dev/null | head -80
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "🔐 [release] APK imzasını doğrula"
+        id: verify
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 || secrets.KFT_KEYSTORE_BASE64 }}
+        run: |
+          set +o pipefail
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          echo "apksigner: $APKSIGNER"
+          "$APKSIGNER" version || true
+          shopt -s nullglob
+          APKS=(app/build/outputs/apk/release/*.apk)
+          if [ ${#APKS[@]} -eq 0 ]; then
+            echo "::error::Release APK bulunamadı (app/build/outputs/apk/release/ boş)"
+            ls -la app/build/outputs/apk/release/ 2>/dev/null || echo "(klasör yok)"
+            exit 1
+          fi
+          : > imza.txt
+          VERIFY_FAILED=0
+          for f in "${APKS[@]}"; do
+            echo "=== Dosya: $f ==="
+            set +e
+            OUTPUT=$("$APKSIGNER" verify --verbose --print-certs "$f" 2>&1)
+            RC=$?
+            set -e
+            printf '%s\n' "$OUTPUT" | tee -a imza.txt
+            echo "--- verify rc: $RC ---"
+            if [ $RC -ne 0 ]; then
+              VERIFY_FAILED=1
+              echo "::error::apksigner doğrulaması başarısız: $f (kod $RC)"
+              keytool -printcert -jarfile "$f" 2>&1 || echo "(keytool da başarısız)"
+            fi
+          done
+          if [ $VERIFY_FAILED -ne 0 ]; then exit 1; fi
+          if grep -qi "Android Debug" imza.txt; then
+            if [ -n "$      print("\n".join(lines) if lines else "Tüm testler geçti.")
           PY
           fi
           exit $rc
