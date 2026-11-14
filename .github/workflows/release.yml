@@ -102,8 +102,13 @@ jobs:
             ls -la app/build/outputs/apk/release 2>/dev/null || echo "(klasör yok)"
             exit 1
           fi
-          APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner
-          "$APKSIGNER" verify --print-certs "$APK" | tee cert.txt
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          APKSIGNER="$(ls -d "$SDK"/build-tools/* | sort -V | tail -1)/apksigner"
+          echo "apksigner: $APKSIGNER"
+          if ! "$APKSIGNER" verify --verbose --print-certs "$APK" 2>&1 | tee cert.txt; then
+            echo "::error::apksigner imzayı doğrulayamadı (yukarıdaki çıktıya bakın)."
+            exit 1
+          fi
           NEW="app/build/outputs/apk/release/FinansTakip_V${{ github.run_number }}_release.apk"
           mv "$APK" "$NEW"
           echo "APK_PATH=$NEW" >> "$GITHUB_OUTPUT"

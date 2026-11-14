@@ -84,18 +84,25 @@ jobs:
           echo "NEW_APK_PATH=$NEW_PATH" >> "$GITHUB_OUTPUT"
           echo "NEW_APK_NAME=$NEW_NAME" >> "$GITHUB_OUTPUT"
 
-      - name: İmza parmak izini yazdır
-        continue-on-error: true
-        run: |
-          APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner
-          "$APKSIGNER" verify --print-certs "${{ steps.rename_apk.outputs.NEW_APK_PATH }}" | grep -E "Signer #1 certificate (DN|SHA-256)"
-
       - name: APK'yı yükle
         uses: actions/upload-artifact@v6
         with:
           name: ${{ steps.rename_apk.outputs.NEW_APK_NAME }}
           path: ${{ steps.rename_apk.outputs.NEW_APK_PATH }}
           if-no-files-found: error
+
+      # Yalnızca bilgi amaçlı: hata verse bile iş düşmez ve APK zaten yüklenmiştir.
+      - name: İmza parmak izini yazdır
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          APKSIGNER="$(ls -d "$SDK"/build-tools/* 2>/dev/null | sort -V | tail -1)/apksigner"
+          echo "apksigner: $APKSIGNER"
+          "$APKSIGNER" verify --verbose --print-certs "${{ steps.rename_apk.outputs.NEW_APK_PATH }}" 2>&1 \
+            | grep -E "^Verifies|Signer #1 certificate (DN|SHA-256)|ERROR|WARNING"
+          exit 0
 
       # Birim testleri APK'dan sonra çalışır; hata olursa job kırmızı olur ama APK zaten yüklenmiştir.
       - name: Birim testleri
