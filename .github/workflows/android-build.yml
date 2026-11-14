@@ -46,8 +46,10 @@ jobs:
       # Her derlemede sürüm numarasını (run_number) 1 artırır
       - name: Sürüm numaralarını güncelle
         run: |
-          VERSION_CODE=${{ github.run_number }}
-          VERSION_NAME="1.0.${{ github.run_number }}"
+          # Debug ve release iş akışlarının sayaçları (run_number) AYRIDIR; ortak ve hep artan bir sürüm kodu için zaman damgası
+          # (UTC dakika) kullanılır. Böylece hangi iş akışından olursa olsun yeni APK eskisinin üstüne kurulur.
+          VERSION_CODE=$(( $(date -u +%s) / 60 ))
+          VERSION_NAME="1.0.$(date -u +%y%m%d%H%M)"
 
           sed -i "s/^\(\s*\)versionCode = .*/\1versionCode = ${VERSION_CODE}/" app/build.gradle.kts
           sed -i "s/^\(\s*\)versionName = .*/\1versionName = \"${VERSION_NAME}\"/" app/build.gradle.kts
