@@ -21,6 +21,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -72,6 +73,7 @@ fun HomeScreen(
     onSeeAgenda: () -> Unit,
     onAddAgenda: () -> Unit,
     onOpenAgendaNote: (Long) -> Unit,
+    onOpenVault: () -> Unit,
     vm: HomeViewModel = hiltViewModel()
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -98,7 +100,8 @@ fun HomeScreen(
                     onInvoice = onAddInvoice,
                     onPay = { dialog = HomeDialog.PickPaymentKind() },
                     onCollect = { dialog = HomeDialog.PickPerson(TransactionType.COLLECTION) },
-                    onAgenda = onAddAgenda
+                    onAgenda = onAddAgenda,
+                    onVault = onOpenVault
                 )
             }
 
@@ -245,7 +248,8 @@ private fun QuickActions(
     onInvoice: () -> Unit,
     onPay: () -> Unit,
     onCollect: () -> Unit,
-    onAgenda: () -> Unit
+    onAgenda: () -> Unit,
+    onVault: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Hızlı işlemler", style = MaterialTheme.typography.titleMedium)
@@ -261,6 +265,8 @@ private fun QuickActions(
             Button(onClick = onCollect, modifier = Modifier.weight(1f)) { Text("Tahsilat al") }
             FilledTonalButton(onClick = onAgenda, modifier = Modifier.weight(1f)) { Text("Ajanda notu") }
         }
+        // Yalnızca kısayol: kasanın içeriği burada görünmez; açılırken yeniden doğrulama istenir.
+        OutlinedButton(onClick = onVault, modifier = Modifier.fillMaxWidth()) { Text("Şifre Kasası") }
     }
 }
 

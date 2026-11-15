@@ -45,6 +45,16 @@ Yerel/CI derlemesi wrapper varsa onu kullanır; yoksa geçici olarak üretir.
 Actions → **"Cihaz testleri (emülatör)"**: gerçek SQLCipher (anahtarla açma, yanlış anahtar reddi, dosyanın düz SQLite olmaması) ve gerçek Android Keystore
 (sarma/açma, anahtar kaybı) testlerini emülatörde koşar. Birim testlerinde (JVM) bu yerel kütüphaneler çalışmadığı için ayrı tutulur.
 
+## Hangi APK nereden çıkar?
+Tek iş akışı: **APK Derle (Debug + Release)**. Her `push`ta (veya Actions'tan elle) tek bir işte sırayla Debug APK, imzalı Release APK (R8 küçültmeli) ve `mapping` dosyası üretilip yüklenir; birim testleri bunlardan SONRA koşar (test hatası APK'ları engellemez, iş yine kırmızı olur).
+APK'lar çalışma sayfasının altındaki **Artifacts** bölümündedir: `FinansTakip_V<N>.apk` (debug), `FinansTakip_V<N>_release.apk` (release, günlük kullanım için bunu kurun), `mapping-V<N>` (çökme kayıtlarını çözmek için). İmza secret'ları eksikse debug yine çıkar, release atlanır ve sarı uyarı verilir.
+Elle çalıştırırken `minify=false` ile R8 kapatılabilir.
+
+## Sürüm numaraları
+`versionCode`, derleme anının UTC dakikasıdır (`date +%s / 60`); `versionName` `1.0.<yılaygünsaatdakika>` biçimindedir. "APK Derle" ve "Release APK" iş akışlarının `run_number` sayaçları ayrı olduğundan
+ortak, hep artan bir kod gerekir: aksi halde daha düşük kodlu bir APK (ör. release #2), kurulu daha yüksek kodlu bir sürümün (debug #31) üstüne kurulamaz ("downgrade" engeli).
+Dosya adlarındaki `V<N>` yalnızca ilgili iş akışının sıra numarasıdır.
+
 ## Sürüm güncelleme ve imza anahtarı (ÖNEMLİ)
 Android, farklı anahtarla imzalı bir APK'yı mevcut kurulumun üstüne yüklemez. Secret tanımlı değilse her derleme rastgele bir debug
 anahtarıyla imzalanır ve her güncellemede eski uygulamayı (verileriyle birlikte) kaldırmanız gerekir. Bunu önlemek için **bir kez** sabit anahtar tanımlayın:
@@ -74,7 +84,7 @@ Debug ve release derlemeleri aynı anahtarı kullanır; imza parmak izi her çal
 Not: anahtarı sabitledikten sonraki **ilk** kurulumda, rastgele anahtarla kurulu eski sürümü kaldırmanız gerekir (bir kereye mahsus).
 
 ## Release APK
-Actions → **Release APK (imzalı)** → Run workflow. Secret'lar yoksa durur (asla debug anahtarıyla imzalamaz). Testler geçmeden üretmez,
+Actions → **APK Derle (Debug + Release)** → Run workflow. Secret'lar yoksa durur (asla debug anahtarıyla imzalamaz). Testler geçmeden üretmez,
 imzayı `apksigner` ile doğrular, `FinansTakip_V<N>_release.apk` ve R8 `mapping-V<N>` artifact'larını yükler.
 Release APK açılışta çöküyorsa `minify` seçeneğini `false` yapıp yeniden çalıştırın (R8 kuralları gerçek cihazda henüz denenmedi) ve hatayı bildirin.
 
@@ -104,5 +114,5 @@ Telefonda APK'yı açarken "bilinmeyen kaynak" izni ve Play Protect "yine de yü
 | "Uygulama yüklenemedi / paket çakışması" | Eski sürüm farklı anahtarla imzalı; kaldırıp yükleyin, sonra sabit anahtarı tanımlayın |
 | Bildirim gelmiyor | Ayarlar → Bildirim ayarları ve Pil optimizasyonu kısayollarını kullanın |
 | Release APK çöküyor | `minify=false` ile tekrar derleyin |
-| Debug APK çıktı, release çıkmadı | Release workflow'unda kırmızı ADIMI bakın: "İmza anahtarını hazırla" → secret adı/değeri hatalı (mesaj hangisini söyler); "Birim testleri" → test kırık (geçici olarak `require_tests=false`); "Release APK derle" → "Release hatası teşhisi" ve `release-raporlari` artifact'ı |
+| Debug APK çıktı, release çıkmadı | Çalışmada kırmızı ADIMA bakın: "İmza anahtarını hazırla" → secret adı/değeri hatalı (mesaj hangisini söyler); "Birim testleri" → test kırık (geçici olarak `require_tests=false`); "Release APK derle" → "Release hatası teşhisi" ve `test-raporu` artifact'ı ve "Hata teşhisi" adımı |
 | "Release imzası yok" hatası | KEYSTORE_PATH/KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD ortam değişkenleri yok; CI'da secrets tanımlı olmalı |

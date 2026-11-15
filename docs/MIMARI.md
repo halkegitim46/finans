@@ -149,7 +149,7 @@ Kilit/Kurulum → Ana Sayfa | Kişiler (liste→detay) | Faturalar (liste→deta
 
 ## Aşama 11 – Sertleştirme ve teslimat
 - **Gün değişimi**: `DayTicker` ("bugün" tek kaynağı) uygulama ön plana gelince yenilenir; ana sayfa, faturalar ve raporlar (hazır dönemler dahil) gün/ay değişince yeniden hesaplanır.
-- **Release**: ayrı `release.yml` (elle): secret zorunlu, testler geçmeden üretmez, `apksigner` doğrulaması, R8 `mapping` artifact'ı, `minify` anahtarı.
+- **Debug + Release tek iş akışında** (`android-build.yml`, tek iş): sırayla Debug APK → imzalı Release APK (`apksigner` doğrulaması, R8 `mapping` artifact'ı, `minify` anahtarı) → birim testleri. İmza anahtarı yoksa release atlanır ve uyarı verilir. İmza hazırlığı `.github/scripts/prepare-signing.sh` ile tek yerde; ortak, artan `versionCode` (UTC dakika).
   Debug ve release aynı sabit anahtarı kullanır (güncelleme veri kaybı olmadan). `generate-keystore.yml` yalnızca özel depoda, tek seferlik.
 - **Testler**: `LegacyMigrationTest` (şifresiz → şifreli veri taşıma, hedef dolu/yok/başarı senaryoları), `MigrationsTest` (şema sürümü artınca eksik migration'ı yakalar), `DayTickerTest`.
 - **ABI**: arm64-v8a, armeabi-v7a, x86_64 (SQLCipher yerel kütüphaneleri). **Tema**: grafik serileri için ayrı üçüncül renk (açık/koyu).

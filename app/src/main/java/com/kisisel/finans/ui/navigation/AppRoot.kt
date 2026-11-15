@@ -12,6 +12,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -85,7 +87,17 @@ fun AppRoot(
                                 }
                             },
                             icon = { Icon(d.icon, contentDescription = null) },
-                            label = { Text(d.label, maxLines = 1, style = MaterialTheme.typography.labelSmall) }
+                            // Etiket tek satır ve ortalı: "Ana Sayfa" ikiye bölünüp yalnızca "Ana" görünüyor ve simgeye göre kayık duruyordu.
+                            label = {
+                                Text(
+                                    d.label,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
                         )
                     }
                 }
@@ -107,7 +119,8 @@ fun AppRoot(
                     onSeeTransactions = { goTop(Routes.TRANSACTIONS) },
                     onSeeAgenda = { nav.navigate(Routes.AGENDA) },
                     onAddAgenda = { nav.navigate(Routes.agendaEdit(0)) },
-                    onOpenAgendaNote = { nav.navigate(Routes.agendaEdit(it)) }
+                    onOpenAgendaNote = { nav.navigate(Routes.agendaEdit(it)) },
+                    onOpenVault = { nav.navigate(Routes.VAULT) }
                 )
             }
             composable(Routes.VAULT) {

@@ -55,7 +55,7 @@ object Routes {
 data class TopDestination(val route: String, val label: String, val icon: ImageVector)
 
 val TopDestinations = listOf(
-    TopDestination(Routes.HOME, "Ana Sayfa", Icons.Filled.Home),
+    TopDestination(Routes.HOME, "Anasayfa", Icons.Filled.Home),
     TopDestination(Routes.PERSONS, "Kişiler", Icons.Filled.People),
     TopDestination(Routes.INVOICES, "Faturalar", Icons.Filled.Receipt),
     TopDestination(Routes.TRANSACTIONS, "İşlemler", Icons.Filled.SwapHoriz),
