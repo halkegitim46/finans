@@ -42,6 +42,7 @@ import com.kisisel.finans.ui.common.dueStatusText
 import com.kisisel.finans.ui.common.label
 import com.kisisel.finans.ui.common.tr
 import java.time.LocalDate
+import com.kisisel.finans.ui.navigation.MenuNavigationIcon
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,7 +57,7 @@ fun InvoiceListScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets.statusBars,
-        topBar = { TopAppBar(title = { Text("Faturalar") }) },
+        topBar = { TopAppBar(title = { Text("Faturalar") }, navigationIcon = { MenuNavigationIcon() }) },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onAdd,

@@ -7,7 +7,6 @@ import com.kisisel.finans.data.local.KisiselFinansDatabase
 import com.kisisel.finans.data.local.dao.OccurrenceWithTemplate
 import com.kisisel.finans.data.local.entity.InvoiceOccurrenceEntity
 import com.kisisel.finans.data.local.entity.InvoiceTemplateEntity
-import com.kisisel.finans.data.local.entity.PersonEntity
 import com.kisisel.finans.data.local.entity.TransactionEntity
 import com.kisisel.finans.data.mapper.formatReminderDays
 import com.kisisel.finans.data.mapper.parseReminderDays
@@ -45,7 +44,7 @@ class InvoiceRepositoryImpl @Inject constructor(
     private val payments = db.paymentDao()
 
     override suspend fun createTemplate(cmd: NewInvoice, today: LocalDate): Long = db.withTransaction {
-        cmd.personId?.let { requireActivePerson(it) }
+        cmd.personId?.let { persons.requireActive(it) }
         val now = clock.millis()
         val id = invoices.insertTemplate(
             InvoiceTemplateEntity(
@@ -73,7 +72,7 @@ class InvoiceRepositoryImpl @Inject constructor(
     override suspend fun updateTemplate(update: InvoiceUpdate) {
         db.withTransaction {
             val t = invoices.getTemplate(update.id) ?: throw FinanceException.TemplateNotFound()
-            if (update.personId != null && update.personId != t.personId) requireActivePerson(update.personId)
+            if (update.personId != null && update.personId != t.personId) persons.requireActive(update.personId)
             invoices.updateTemplate(
                 t.copy(
                     personId = update.personId,
@@ -138,7 +137,7 @@ class InvoiceRepositoryImpl @Inject constructor(
         if (personId == null) {
             null
         } else {
-            requireActivePerson(personId)
+            persons.requireActive(personId)
             val n = transactions.countByOccurrence(occ.id)
             val txId = transactions.insert(
                 TransactionEntity(
@@ -278,9 +277,4 @@ class InvoiceRepositoryImpl @Inject constructor(
         paidDate = occurrence.paidAt?.let { Instant.ofEpochMilli(it).atZone(clock.zone).toLocalDate() }
     )
 
-    private suspend fun requireActivePerson(id: Long): PersonEntity {
-        val p = persons.getById(id) ?: throw FinanceException.PersonNotFound()
-        if (p.isArchived) throw FinanceException.PersonArchived()
-        return p
-    }
 }

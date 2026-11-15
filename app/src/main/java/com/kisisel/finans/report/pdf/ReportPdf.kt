@@ -12,7 +12,7 @@ import com.kisisel.finans.report.ReportCsv
 import com.kisisel.finans.report.SeriesPoint
 import com.kisisel.finans.domain.model.LedgerLine
 import java.time.LocalDate
-import java.util.Locale
+import com.kisisel.finans.core.TurkishLocale
 
 /** Rapor verisini PDF bloklarına çevirir (saf; çizim PdfReportRenderer'dadır). */
 object ReportPdf {
@@ -20,7 +20,7 @@ object ReportPdf {
     private fun d(v: LocalDate) = CsvWriter.date(v)
     private fun rangeText(r: DateRange) = "${d(r.start)} - ${d(r.end)}"
     private fun signed(v: Long) = (if (v > 0) "+" else "") + m(v)
-    private fun percent(r: ComparisonRow) = r.percent?.let { String.format(Locale("tr", "TR"), "%+.0f%%", it) } ?: "-"
+    private fun percent(r: ComparisonRow) = r.percent?.let { String.format(TurkishLocale, "%+.0f%%", it) } ?: "-"
 
     private fun empty(text: String) = PdfBlock.Paragraph(text)
 

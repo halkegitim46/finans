@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kisisel.finans.core.Money
+import com.kisisel.finans.ui.navigation.MenuNavigationIcon
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +45,7 @@ fun PersonListScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets.statusBars,
-        topBar = { TopAppBar(title = { Text("Kişiler") }) },
+        topBar = { TopAppBar(title = { Text("Kişiler") }, navigationIcon = { MenuNavigationIcon() }) },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onAdd,

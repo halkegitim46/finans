@@ -39,6 +39,7 @@ import com.kisisel.finans.domain.model.LedgerLine
 import com.kisisel.finans.domain.model.TransactionType
 import com.kisisel.finans.ui.common.label
 import com.kisisel.finans.ui.common.tr
+import com.kisisel.finans.ui.navigation.MenuNavigationIcon
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,7 +51,7 @@ fun TransactionsScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets.statusBars,
-        topBar = { TopAppBar(title = { Text("İşlemler") }) }
+        topBar = { TopAppBar(title = { Text("İşlemler") }, navigationIcon = { MenuNavigationIcon() }) }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
             OutlinedTextField(

@@ -21,7 +21,7 @@ object SecureClipboard {
     private var pending: Runnable? = null
 
     fun copy(context: Context, label: String, text: String, clearAfterMs: Long = CLEAR_AFTER_MS) {
-        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val cm = context.getSystemService(ClipboardManager::class.java) ?: return
         val clip = ClipData.newPlainText(label, text)
         clip.description.extras = PersistableBundle().apply { putBoolean(SENSITIVE_KEY, true) }
         cm.setPrimaryClip(clip)

@@ -6,8 +6,9 @@ import com.kisisel.finans.domain.model.Recurrence
 import com.kisisel.finans.domain.model.TransactionType
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import com.kisisel.finans.core.DateFormats
 
-private val DATE_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
+private val DATE_FMT: DateTimeFormatter = DateFormats.DATE
 
 fun LocalDate.tr(): String = format(DATE_FMT)
 

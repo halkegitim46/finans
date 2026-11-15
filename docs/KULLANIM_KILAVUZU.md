@@ -41,6 +41,9 @@ Her faturada seçersiniz: 7 gün önce, 3 gün önce, 1 gün önce, vade günü 
 Bildirimde fatura adı, tutar ve son ödeme tarihi vardır; kilit ekranında yalnızca "Fatura hatırlatması" görünür. Dokununca ilgili fatura açılır
 (uygulama kilitliyse önce kilit açılır). Ödenmiş faturalar için bildirim gönderilmez. Bildirimler gelmezse Ayarlar → Bildirim ve Pil kısayollarını kullanın.
 
+## 5a. Yan menü (hamburger)
+Ana bölümlerin (Anasayfa, Kişiler, Faturalar, İşlemler, Raporlar, Ayarlar) sol üst köşesindeki **☰** düğmesine dokunarak ya da ekranı soldan sağa kaydırarak yan menüyü açarsınız. Menüde altı ana bölümün yanı sıra **Ajanda** ve **Şifre Kasası** da vardır. Geri tuşu açık menüyü kapatır.
+
 ## 5b. Ajanda ve notlar
 Ana Sayfa'daki **Ajanda** bölümünden veya "Ajanda notu" düğmesinden açılır. Ajanda; ödenmemiş faturalarınızı, vadesi olan borç/alacaklarınızı ve kendi notlarınızı **günlere göre** tek listede gösterir
 (Geciken → Bugün → Yarın → sonraki günler; 30 günden ilerisi "daha sonraki kayıtlar" olarak sayılır).

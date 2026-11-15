@@ -42,6 +42,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 
 enum class ReportTab(val id: String, val label: String) {
     SUMMARY("ozet", "Özet"),
@@ -206,6 +207,8 @@ class ReportsViewModel @Inject constructor(
                 }
                 pendingBytes = bytes
                 exportRequest.value = ExportRequest(name, ExportKind.PDF)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _messages.tryEmit("PDF oluşturulamadı.")
             }
@@ -230,6 +233,8 @@ class ReportsViewModel @Inject constructor(
                 context.contentResolver.openOutputStream(uri, "wt")?.use { it.write(bytes) }
                     ?: throw java.io.IOException("açılamadı")
                 _messages.tryEmit("Rapor dışa aktarıldı.")
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _messages.tryEmit("Dosya yazılamadı.")
             }

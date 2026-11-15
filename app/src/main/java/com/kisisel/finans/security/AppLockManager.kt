@@ -20,6 +20,7 @@ class AppLockManager @Inject constructor() {
 
     @Volatile
     private var settings = SecuritySettings()
+    @Volatile
     private var backgroundedAt: Long? = null
     @Volatile
     private var suppressLockUntil: Long = Long.MIN_VALUE

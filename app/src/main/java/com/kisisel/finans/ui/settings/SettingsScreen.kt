@@ -52,6 +52,7 @@ import com.kisisel.finans.ui.common.openNotificationSettings
 import com.kisisel.finans.ui.lock.BiometricHelper
 import com.kisisel.finans.ui.lock.ResetConfirmDialog
 import com.kisisel.finans.ui.lock.findFragmentActivity
+import com.kisisel.finans.ui.navigation.MenuNavigationIcon
 
 private enum class SettingsDialog { PASSWORD, PIN_SET, PIN_REMOVE, RESET, DELETE_LEGACY }
 
@@ -72,7 +73,7 @@ fun SettingsScreen(onOpenVault: () -> Unit, vm: SettingsViewModel = hiltViewMode
     Scaffold(
         contentWindowInsets = WindowInsets.statusBars,
         snackbarHost = { SnackbarHost(snackbar) },
-        topBar = { TopAppBar(title = { Text("Ayarlar") }) }
+        topBar = { TopAppBar(title = { Text("Ayarlar") }, navigationIcon = { MenuNavigationIcon() }) }
     ) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),

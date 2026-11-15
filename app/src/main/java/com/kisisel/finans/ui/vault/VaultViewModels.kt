@@ -20,14 +20,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Locale
 import javax.inject.Inject
+import com.kisisel.finans.core.TurkishLocale
 
-private val TR = Locale("tr", "TR")
 
 // ---------------- liste ----------------
 data class VaultListState(
@@ -45,9 +43,9 @@ class VaultListViewModel @Inject constructor(
     private val query = MutableStateFlow("")
 
     val state: StateFlow<VaultListState> = combine(repo.observeSummaries(), query) { items, q ->
-        val needle = q.trim().lowercase(TR)
+        val needle = q.trim().lowercase(TurkishLocale)
         val shown = if (needle.isEmpty()) items else items.filter {
-            it.title.lowercase(TR).contains(needle) || it.username.lowercase(TR).contains(needle) || it.url.lowercase(TR).contains(needle)
+            it.title.lowercase(TurkishLocale).contains(needle) || it.username.lowercase(TurkishLocale).contains(needle) || it.url.lowercase(TurkishLocale).contains(needle)
         }
         VaultListState(shown, q, items.size, loaded = true)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), VaultListState())

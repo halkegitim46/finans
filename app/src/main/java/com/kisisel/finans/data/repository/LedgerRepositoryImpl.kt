@@ -44,7 +44,7 @@ class LedgerRepositoryImpl @Inject constructor(
     override suspend fun recordClaim(cmd: NewClaim): Long = db.withTransaction {
         require(cmd.type.createsReceivable || cmd.type.createsPayable) { "Alacak/borç türü bekleniyordu" }
         transactions.getByIdempotencyKey(cmd.idempotencyKey)?.let { return@withTransaction it.id }
-        requireActivePerson(cmd.personId)
+        persons.requireActive(cmd.personId)
         val now = clock.millis()
         transactions.insert(
             TransactionEntity(
@@ -73,7 +73,7 @@ class LedgerRepositoryImpl @Inject constructor(
             )
         }
 
-        val person = requireActivePerson(cmd.personId)
+        val person = persons.requireActive(cmd.personId)
         val isCollection = cmd.type == TransactionType.COLLECTION
         val balance = LedgerCalculator.balance(person.openingBalanceKurus, transactions.getTotalsByType(person.id))
         val remaining = if (isCollection) balance.remainingReceivable else balance.remainingPayable
@@ -222,9 +222,4 @@ class LedgerRepositoryImpl @Inject constructor(
         return txs.map { LedgerLine(it.toDomain(), names[it.personId].orEmpty()) }
     }
 
-    private suspend fun requireActivePerson(id: Long): PersonEntity {
-        val p = persons.getById(id) ?: throw FinanceException.PersonNotFound()
-        if (p.isArchived) throw FinanceException.PersonArchived()
-        return p
-    }
 }

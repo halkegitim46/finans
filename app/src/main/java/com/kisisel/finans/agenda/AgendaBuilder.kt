@@ -18,7 +18,8 @@ sealed interface AgendaEntry {
     }
 
     data class Claim(val claim: ClaimLine) : AgendaEntry {
-        override val date: LocalDate get() = claim.dueDate!!
+        override val date: LocalDate
+            get() = requireNotNull(claim.dueDate) { "Vadesiz alacak ajandaya alınmaz" }
         override val time: LocalTime? get() = null
     }
 

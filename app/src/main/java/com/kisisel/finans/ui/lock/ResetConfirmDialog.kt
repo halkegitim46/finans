@@ -15,13 +15,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import java.util.Locale
+import com.kisisel.finans.core.TurkishLocale
 
 /** Geri alınamaz silme için yazarak onay ("SİL"). */
 @Composable
 fun ResetConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     var text by remember { mutableStateOf("") }
-    val confirmed = text.trim().uppercase(Locale("tr", "TR")) in setOf("SİL", "SIL")
+    val confirmed = text.trim().uppercase(TurkishLocale) in setOf("SİL", "SIL")
 
     AlertDialog(
         onDismissRequest = onDismiss,

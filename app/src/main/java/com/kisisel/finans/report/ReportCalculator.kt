@@ -12,7 +12,7 @@ import java.text.Collator
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.temporal.ChronoUnit
-import java.util.Locale
+import com.kisisel.finans.core.TurkishLocale
 
 /**
  * Rapor hesapları (saf fonksiyonlar). Tüm tutarlar kuruş (Long); iptal edilmiş işlemler hiçbir rapora girmez.
@@ -20,10 +20,9 @@ import java.util.Locale
 object ReportCalculator {
     private val MONTHS = listOf("Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara")
     private const val MAX_MONTHS = 36
-    private val TR = Locale("tr", "TR")
 
     /** Türkçe sıralama (Ç, Ö, Ş, Ü, Ğ, İ doğru yerde). Collator iş parçacığı güvenli olmadığından her seferinde üretilir. */
-    private fun collator(): Collator = Collator.getInstance(TR)
+    private fun collator(): Collator = Collator.getInstance(TurkishLocale)
 
     /** Kişinin net bakiyesine (alacak − borç) etkisi. */
     fun balanceDelta(type: TransactionType, amountKurus: Long): Long = when (type) {
@@ -145,16 +144,17 @@ object ReportCalculator {
         val invoiceItems = occurrences.filter { it.status == OccurrenceStatus.UNPAID }.map {
             PendingItem(PendingKind.INVOICE, it.name, it.personName, it.dueDate, it.amountKurus, overdueDays(it.dueDate, today), it.id)
         }
-        val claimItems = claims.filter { it.occurrenceId == null && it.dueDate != null && it.openKurus > 0 }.map {
-            val kind = if (it.type == TransactionType.BORROW) PendingKind.PAYABLE else PendingKind.RECEIVABLE
+        val claimItems = claims.filter { it.occurrenceId == null && it.openKurus > 0 }.mapNotNull { claim ->
+            val due = claim.dueDate ?: return@mapNotNull null          // vadesiz alacak/borç bekleyenlerde yer almaz
+            val kind = if (claim.type == TransactionType.BORROW) PendingKind.PAYABLE else PendingKind.RECEIVABLE
             PendingItem(
                 kind = kind,
-                title = it.description.ifBlank { if (kind == PendingKind.PAYABLE) "Borç" else "Alacak" },
-                personName = it.personName,
-                dueDate = it.dueDate!!,
-                amountKurus = it.openKurus,
-                daysOverdue = overdueDays(it.dueDate, today),
-                refId = it.entryId
+                title = claim.description.ifBlank { if (kind == PendingKind.PAYABLE) "Borç" else "Alacak" },
+                personName = claim.personName,
+                dueDate = due,
+                amountKurus = claim.openKurus,
+                daysOverdue = overdueDays(due, today),
+                refId = claim.entryId
             )
         }
         val all = (invoiceItems + claimItems).sortedWith(compareBy({ it.dueDate }, { it.refId }))

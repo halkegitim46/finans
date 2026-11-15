@@ -33,7 +33,8 @@ import com.kisisel.finans.ui.common.DateField
 import com.kisisel.finans.ui.common.DropdownField
 import com.kisisel.finans.ui.common.label
 import com.kisisel.finans.ui.common.tr
-import java.util.Locale
+import com.kisisel.finans.core.TurkishLocale
+import com.kisisel.finans.ui.navigation.MenuNavigationIcon
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,6 +72,7 @@ fun ReportsScreen(vm: ReportsViewModel = hiltViewModel()) {
         topBar = {
             TopAppBar(
                 title = { Text("Raporlar") },
+                navigationIcon = { MenuNavigationIcon() },
                 actions = {
                     IconButton(onClick = { exportMenuOpen = true }) {
                         Icon(Icons.Filled.Download, contentDescription = "Raporu dışa aktar")
@@ -218,7 +220,7 @@ private fun ComparisonLine(r: ComparisonRow) {
             Text("Önceki: ${Money.format(r.previous)}", style = MaterialTheme.typography.bodyMedium)
         }
         val sign = if (r.delta > 0) "+" else ""
-        val pct = r.percent?.let { String.format(Locale("tr", "TR"), " (%+.0f%%)", it) } ?: ""
+        val pct = r.percent?.let { String.format(TurkishLocale, " (%+.0f%%)", it) } ?: ""
         Text("Fark: $sign${Money.format(r.delta)}$pct", style = MaterialTheme.typography.bodySmall)
     }
     HorizontalDivider()

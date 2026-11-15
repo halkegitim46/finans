@@ -4,7 +4,7 @@ import com.kisisel.finans.domain.FinanceException
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
+import com.kisisel.finans.core.DateFormats
 
 const val MAX_BACKUP_FILE_BYTES = 64 * 1024 * 1024
 
@@ -24,4 +24,4 @@ fun readLimited(input: InputStream, maxBytes: Int): ByteArray {
 }
 
 fun backupFileName(at: LocalDateTime): String =
-    "KisiselFinansTakip_yedek_" + at.format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HHmm")) + ".kftbak"
+    "KisiselFinansTakip_yedek_" + at.format(DateFormats.FILE_STAMP) + ".kftbak"

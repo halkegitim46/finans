@@ -14,6 +14,7 @@ Kullanım için: [`docs/KULLANIM_KILAVUZU.md`](docs/KULLANIM_KILAVUZU.md) · Mim
   her dönem ayrı kayıt; fatura ödenince kişinin alacağına eklenir.
 - **Hatırlatmalar** (WorkManager): fatura vadeleri (7/3/1 gün önce, vade günü, gecikme), **borç/alacak vadeleri** (3/1 gün önce, vade günü, gecikince 3 günde bir; Ayarlar'dan kapatılabilir) ve **ajanda notları** (tarih/saatli, zamanında / 1 saat / 1 gün önce); bildirime dokununca ilgili ekran açılır.
 - **Şifre Kasası** (Ayarlar → Güvenlik): hesap/site/uygulama şifreleriniz şifreli veritabanında saklanır; açarken uygulama kilidinden bağımsız **yeniden doğrulama** (parola/PIN/biyometrik) istenir, arka plana geçince kilitlenir; şifreler varsayılan gizli, panoya kopyalama 30 sn sonra temizlenir; güçlü şifre üretici ve güç tahmini vardır. Şifreler yedeğe (yedek parolanızla şifrelenmiş olarak) dahildir.
+- **Yan menü (hamburger)**: ana bölümlerin sol üst köşesindeki ☰ ile (veya soldan kaydırarak) tüm bölümlere, Ajanda'ya ve Şifre Kasası'na erişim.
 - **Ajanda**: faturalar, vadesi olan borç/alacaklar ve kendi notlarınız gün gün tek zaman çizelgesinde; notlar tamamlanabilir, kişiye bağlanabilir, hatırlatıcı kurulabilir.
 - **Raporlar**: aylık/yıllık özet, önceki dönemle karşılaştırma, kişi dökümü, fatura ödeme geçmişi, tahsilat geçmişi,
   geciken/ödenmemiş kalemler; grafikler; **PDF** (açık sekme; Kişiler sekmesinde tek kişinin hesap dökümü) ve CSV (Excel) dışa aktarma.

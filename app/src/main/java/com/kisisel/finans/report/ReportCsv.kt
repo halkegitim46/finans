@@ -5,6 +5,7 @@ import com.kisisel.finans.domain.model.LedgerLine
 import com.kisisel.finans.domain.model.TransactionType
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import com.kisisel.finans.core.DateFormats
 
 /**
  * Excel (Türkçe) uyumlu CSV: ayraç ";", ondalık ",", binlik ayracı yok, UTF-8 BOM, CRLF.
@@ -12,7 +13,7 @@ import java.time.format.DateTimeFormatter
  */
 object CsvWriter {
     private const val SEP = ";"
-    private val DATE_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
+    private val DATE_FMT: DateTimeFormatter = DateFormats.DATE
     private val BOM = byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte())
 
     fun text(value: String): String {

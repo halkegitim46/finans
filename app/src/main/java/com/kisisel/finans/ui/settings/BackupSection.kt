@@ -32,14 +32,15 @@ import com.kisisel.finans.ui.common.PasswordField
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.Locale
+import com.kisisel.finans.core.TurkishLocale
+import com.kisisel.finans.core.DateFormats
 
-private val DATE_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
+private val DATE_TIME: DateTimeFormatter = DateFormats.DATE_TIME
 
 private fun formatDateTime(millis: Long): String =
     Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).format(DATE_TIME)
 
-private fun formatSize(bytes: Long): String = String.format(Locale("tr", "TR"), "%.1f KB", bytes / 1024.0)
+private fun formatSize(bytes: Long): String = String.format(TurkishLocale, "%.1f KB", bytes / 1024.0)
 
 @Composable
 fun BackupSection(

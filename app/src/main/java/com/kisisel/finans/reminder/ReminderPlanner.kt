@@ -12,6 +12,7 @@ import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 import java.time.format.DateTimeFormatter
+import com.kisisel.finans.core.DateFormats
 
 const val EXTRA_OCCURRENCE_ID = "occurrence_id"
 const val EXTRA_PERSON_ID = "person_id"
@@ -42,8 +43,8 @@ fun ownerOfKey(key: String): String = key.substringBefore(':')
  *  - Ödenmiş/iptal dönemler ve daha önce gönderilmiş anahtarlar atlanır.
  */
 object ReminderPlanner {
-    private val DATE_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
-    private val TIME_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+    private val DATE_FMT: DateTimeFormatter = DateFormats.DATE
+    private val TIME_FMT: DateTimeFormatter = DateFormats.TIME
 
     /** Borç/alacak vade hatırlatma günleri ve gecikme aralığı (sabit; ayarlardan yalnızca açılıp kapatılır). */
     private val CLAIM_DAYS = setOf(3, 1, 0)

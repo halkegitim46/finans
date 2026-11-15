@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import java.util.Locale
 import javax.inject.Inject
+import com.kisisel.finans.core.TurkishLocale
 
 /** balance null ise kişi arşivdedir (bakiye listede gösterilmez). */
 data class PersonRow(val person: Person, val balance: PersonBalance?)
@@ -26,17 +27,16 @@ data class PersonListState(
     val loaded: Boolean = false
 )
 
-private val TR = Locale("tr", "TR")
 
 /** Büyük/küçük harf ve Türkçe i/ı farkına toleranslı arama. */
 fun filterPersonRows(rows: List<PersonRow>, query: String): List<PersonRow> {
     val q = query.trim()
     if (q.isEmpty()) return rows
-    val qTr = q.lowercase(TR)
+    val qTr = q.lowercase(TurkishLocale)
     val qRoot = q.lowercase(Locale.ROOT)
     return rows.filter {
         val name = it.person.fullName
-        name.lowercase(TR).contains(qTr) || name.lowercase(Locale.ROOT).contains(qRoot)
+        name.lowercase(TurkishLocale).contains(qTr) || name.lowercase(Locale.ROOT).contains(qRoot)
     }
 }
 

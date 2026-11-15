@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
 
 data class BackupUi(
     val info: BackupInfo? = null,
@@ -122,6 +123,8 @@ class BackupViewModel @Inject constructor(
                     )
                 )
                 _messages.tryEmit("Yedek kaydedildi.")
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _messages.tryEmit("Yedek dosyası yazılamadı.")
             } finally {

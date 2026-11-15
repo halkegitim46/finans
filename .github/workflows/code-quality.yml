@@ -1,0 +1,54 @@
+name: Kod kalitesi (elle)
+
+# Elle çalıştırılır; derlemeyi ve APK üretimini ETKİLEMEZ. Android Lint ve detekt (varsayılan kurallar) raporlarını üretir.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v5
+        with:
+          gradle-version: '8.9'
+
+      - name: Gradle wrapper hazırla
+        run: |
+          if [ ! -f gradlew ]; then
+            gradle wrapper --gradle-version 8.9
+          fi
+          chmod +x gradlew
+
+      - name: Android Lint
+        continue-on-error: true
+        run: ./gradlew lintDebug --no-daemon
+
+      - name: detekt (bilgi amaçlı)
+        continue-on-error: true
+        run: |
+          curl -sSL -o detekt-cli.jar https://github.com/detekt/detekt/releases/download/v1.23.7/detekt-cli-1.23.7-all.jar
+          java -jar detekt-cli.jar --input app/src/main/java --report html:detekt-raporu.html --report txt:detekt-raporu.txt || true
+          head -60 detekt-raporu.txt 2>/dev/null || true
+
+      - name: Raporları yükle
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: kod-kalitesi-raporlari
+          path: |
+            app/build/reports/lint-results-debug.html
+            app/build/reports/lint-results-debug.txt
+            detekt-raporu.html
+            detekt-raporu.txt
+          if-no-files-found: ignore

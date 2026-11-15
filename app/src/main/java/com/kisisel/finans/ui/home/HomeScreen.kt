@@ -54,6 +54,7 @@ import com.kisisel.finans.ui.common.label
 import com.kisisel.finans.ui.common.tr
 import com.kisisel.finans.ui.persons.EntryDialog
 import java.time.LocalDate
+import com.kisisel.finans.ui.navigation.MenuNavigationIcon
 
 private sealed interface HomeDialog {
     data class PickPaymentKind(val unused: Int = 0) : HomeDialog
@@ -82,7 +83,7 @@ fun HomeScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets.statusBars,
-        topBar = { TopAppBar(title = { Text("Kişisel Finans Takip") }) }
+        topBar = { TopAppBar(title = { Text("Kişisel Finans Takip") }, navigationIcon = { MenuNavigationIcon() }) }
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),

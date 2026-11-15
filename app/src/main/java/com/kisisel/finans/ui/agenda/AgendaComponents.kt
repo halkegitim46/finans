@@ -32,9 +32,10 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
-import java.util.Locale
+import com.kisisel.finans.core.TurkishLocale
+import com.kisisel.finans.core.DateFormats
 
-private val TIME_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+private val TIME_FMT: DateTimeFormatter = DateFormats.TIME
 
 /** Liste anahtarı: farklı türlerin kimlikleri çakışmasın. */
 fun agendaEntryKey(e: AgendaEntry): String = when (e) {
@@ -46,7 +47,7 @@ fun agendaEntryKey(e: AgendaEntry): String = when (e) {
 fun agendaDayLabel(date: LocalDate, today: LocalDate): String = when (date) {
     today -> "Bugün"
     today.plusDays(1) -> "Yarın"
-    else -> date.tr() + " " + date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale("tr", "TR"))
+    else -> date.tr() + " " + date.dayOfWeek.getDisplayName(TextStyle.FULL, TurkishLocale)
 }
 
 private fun title(e: AgendaEntry): String = when (e) {

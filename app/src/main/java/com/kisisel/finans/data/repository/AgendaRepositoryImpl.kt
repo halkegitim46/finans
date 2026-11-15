@@ -4,7 +4,6 @@ import com.kisisel.finans.core.toDb
 import com.kisisel.finans.core.toLocalDate
 import com.kisisel.finans.data.local.KisiselFinansDatabase
 import com.kisisel.finans.data.local.entity.AgendaItemEntity
-import com.kisisel.finans.data.local.entity.PersonEntity
 import com.kisisel.finans.domain.FinanceException
 import com.kisisel.finans.domain.model.AgendaItem
 import com.kisisel.finans.domain.model.AgendaUpdate
@@ -28,7 +27,7 @@ class AgendaRepositoryImpl @Inject constructor(
     private val persons = db.personDao()
 
     override suspend fun create(cmd: NewAgendaItem): Long {
-        cmd.personId?.let { requireActivePerson(it) }
+        cmd.personId?.let { persons.requireActive(it) }
         val now = clock.millis()
         return agenda.insert(
             AgendaItemEntity(
@@ -46,7 +45,7 @@ class AgendaRepositoryImpl @Inject constructor(
 
     override suspend fun update(cmd: AgendaUpdate) {
         val existing = agenda.getById(cmd.id)?.takeIf { !it.isArchived } ?: throw FinanceException.AgendaNotFound()
-        if (cmd.personId != null && cmd.personId != existing.personId) requireActivePerson(cmd.personId)
+        if (cmd.personId != null && cmd.personId != existing.personId) persons.requireActive(cmd.personId)
         agenda.update(
             existing.copy(
                 title = cmd.title,
@@ -99,9 +98,4 @@ class AgendaRepositoryImpl @Inject constructor(
         doneAt = doneAt
     )
 
-    private suspend fun requireActivePerson(id: Long): PersonEntity {
-        val p = persons.getById(id) ?: throw FinanceException.PersonNotFound()
-        if (p.isArchived) throw FinanceException.PersonArchived()
-        return p
-    }
 }

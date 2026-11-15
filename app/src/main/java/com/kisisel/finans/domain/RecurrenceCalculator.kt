@@ -72,7 +72,7 @@ object RecurrenceCalculator {
                 maxOf(0L, ChronoUnit.YEARS.between(firstDue, from) - 2)
             ) { firstDue.plusYears(it) }
             Recurrence.CUSTOM_DAYS -> {
-                val days = customDays!!.toLong()
+                val days = requireNotNull(customDays) { "Özel tekrar için gün sayısı gerekli" }.toLong()
                 val start = if (from.isAfter(firstDue)) maxOf(0L, ChronoUnit.DAYS.between(firstDue, from) / days - 1) else 0L
                 collect(start) { firstDue.plusDays(days * it) }
             }
