@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       release:
-        description: "İmzalı release APK da üretilsin mi?"
+        description: "Release APK da üretilsin mi? (KAPATMAK için işareti kaldırın)"
         type: boolean
         default: true
       minify:
@@ -33,8 +33,7 @@ permissions:
 
 # ============================================================
 # 0) PREFLIGHT — Derlemeden ÖNCE ortamı denetler.
-#    Burada kırmızı olan bir şey varsa, derleme zaten patlayacaktır;
-#    en azından nedenini erkenden görürsünüz.
+#    Secret'ları, dosyaları, sed uyumunu ve imza bloğunu raporlar.
 # ============================================================
 jobs:
   preflight:
@@ -55,12 +54,11 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || secrets.KFT_KEY_PASSWORD }}
         run: |
           echo "::group::Secret durumu (yalnızca VAR/YOK, değer yok)"
-          has_ks="false"
+          has_ks="true"
           if [ -n "${KEYSTORE_BASE64:-}" ]; then
             echo "  [VAR] KEYSTORE_BASE64 (uzunluk: ${#KEYSTORE_BASE64})"
-            has_ks="true"
           else
-            echo "  [YOK] KEYSTORE_BASE64  -> release APK üretilemez"
+            echo "  [YOK] KEYSTORE_BASE64  -> release APK üretilemez"; has_ks="false"
           fi
           if [ -n "${KEYSTORE_PASSWORD:-}" ]; then echo "  [VAR] KEYSTORE_PASSWORD (uzunluk: ${#KEYSTORE_PASSWORD})"; else echo "  [YOK] KEYSTORE_PASSWORD"; has_ks="false"; fi
           if [ -n "${KEY_ALIAS:-}" ];        then echo "  [VAR] KEY_ALIAS = ${KEY_ALIAS}";                     else echo "  [YOK] KEY_ALIAS";        has_ks="false"; fi
@@ -86,11 +84,7 @@ jobs:
           for f in app/build.gradle.kts proguard-rules.pro gradle/wrapper/gradle-wrapper.properties; do
             if [ -f "$f" ]; then echo "  [VAR]   $f"; else echo "  [YOK]   $f"; fi
           done
-          if [ -f gradlew ]; then
-            echo "  [VAR]   gradlew"
-          else
-            echo "  [YOK]   gradlew — workflow üretecek (sorun değil)"
-          fi
+          if [ -f gradlew ]; then echo "  [VAR]   gradlew"; else echo "  [YOK]   gradlew — workflow üretecek (sorun değil)"; fi
           echo "::endgroup::"
 
       - name: "🔎 [preflight] build.gradle.kts sed uyumu"
@@ -150,14 +144,13 @@ jobs:
           else
             NAME="1.0.${{ github.run_number }}"
           fi
-          # Dosya adına güvenli karakterler
           NAME="$(printf '%s' "$NAME" | tr -c 'A-Za-z0-9._-' '_')"
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
           echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
           echo "### Sürüm: \`$NAME\` (code \`${{ github.run_number }}\`)" >> "$GITHUB_STEP_SUMMARY"
 
 # ============================================================
-# 2) BUILD — testler + debug APK
+# 2) BUILD — testler + debug APK (release'i BLOKE ETMEZ)
 # ============================================================
   build:
     needs: version
@@ -188,7 +181,6 @@ jobs:
           ./gradlew --version
 
       - name: "🧰 [build] Sürüm numaralarını güncelle"
-        id: bump
         shell: bash
         run: |
           cp app/build.gradle.kts app/build.gradle.kts.orig
@@ -201,17 +193,14 @@ jobs:
           grep -nE 'versionCode|versionName' app/build.gradle.kts
           echo "::endgroup::"
           if ! grep -q "versionCode = ${VERSION_CODE}" app/build.gradle.kts; then
-            echo "::error::versionCode sed ile güncellenemedi. app/build.gradle.kts'de satır formatı uyumsuz."
-            exit 1
+            echo "::error::versionCode sed ile güncellenemedi. app/build.gradle.kts'de satır formatı uyumsuz."; exit 1
           fi
           if ! grep -q "versionName = \"${VERSION_NAME}\"" app/build.gradle.kts; then
-            echo "::error::versionName sed ile güncellenemedi."
-            exit 1
+            echo "::error::versionName sed ile güncellenemedi."; exit 1
           fi
           diff -u app/build.gradle.kts.orig app/build.gradle.kts || true
 
-      # NOT: Testler artık AYRI adım. Kırmızı olsa bile debug APK üretilir,
-      # sadece "test kırmızı" olarak görünür ve release job'ı BLOKE OLMAZ.
+      # Testler AYRI adım + continue-on-error: kırmızı olsa bile debug APK üretilir.
       - name: "🧪 [build] Birim testleri"
         id: tests
         shell: bash
@@ -220,14 +209,11 @@ jobs:
           set -o pipefail
           ./gradlew testDebugUnitTest --no-daemon --stacktrace --console=plain 2>&1 | tee unit-tests.log
           rc=$?
-          echo "test_rc=$rc" >> "$GITHUB_OUTPUT"
-          # başarısız testleri özetle (Summary'ye)
           if [ -d app/build/test-results/testDebugUnitTest ]; then
             python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY" || true
           import glob, xml.etree.ElementTree as ET
           files = sorted(glob.glob("app/build/test-results/testDebugUnitTest/*.xml"))
-          failed = 0
-          lines = []
+          failed = 0; lines = []
           for f in files:
               for case in ET.parse(f).getroot().iter("testcase"):
                   for tag in ("failure", "error"):
@@ -244,7 +230,6 @@ jobs:
           exit $rc
 
       - name: "📦 [build] Debug APK derle"
-        id: assemble_debug
         shell: bash
         run: |
           set -o pipefail
@@ -295,14 +280,16 @@ jobs:
           if-no-files-found: error
 
 # ============================================================
-# 3) RELEASE — imzalı APK (yalnızca workflow_dispatch+release=true veya tag)
-#    Debug build job'ına BAĞIMLI DEĞİL; böylece testler kırmızı olsa bile
-#    release üretilebilir. Sadece version job'ına bağlıdır.
+# 3) RELEASE — imzalı APK
+#    • build job'ına BAĞIMLI DEĞİL (testler kırmızı olsa bile release üretilebilir)
+#    • workflow_dispatch'te release checkbox'ı BİLEREK kapatılmadıkça ÇALIŞIR
+#    • push ve tag'de otomatik çalışır
+#    • ilk adım TEŞHİS: hangi event/ref/inputs geldiğini yazar
 # ============================================================
   release:
     if: >-
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.release == 'true') ||
-      startsWith(github.ref, 'refs/tags/v')
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.release != 'false')
     needs: [preflight, version]
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -316,6 +303,17 @@ jobs:
       KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || secrets.KFT_KEY_PASSWORD }}
     steps:
       - uses: actions/checkout@v5
+
+      - name: "🔎 [release] Teşhis — bu job neden çalıştı?"
+        shell: bash
+        run: |
+          echo "event_name         : ${{ github.event_name }}"
+          echo "ref                : ${{ github.ref }}"
+          echo "ref_name           : ${{ github.ref_name }}"
+          echo "inputs.release     : ${{ github.event.inputs.release }}"
+          echo "inputs.minify      : ${{ github.event.inputs.minify }}"
+          echo "inputs.version_name: ${{ github.event.inputs.version_name }}"
+          echo "preflight.has_keystore: ${{ needs.preflight.outputs.has_keystore }}"
 
       - uses: actions/setup-java@v5
         with:
@@ -348,12 +346,11 @@ jobs:
             echo "::error::versionName sed ile güncellenemedi"; exit 1
           fi
 
-      # prepare-signing.sh GÖMÜLÜ: tek dosya, harici .sh bağımlılığı yok.
-      # Görevleri:
-      #   1) KEYSTORE_BASE64 (varsa eski KFT_ öneki) çözüp $RUNNER_TEMP/release.jks'e yaz
-      #   2) KEYSTORE_PATH / _PASSWORD / KEY_ALIAS / KEY_PASSWORD'i $GITHUB_ENV'ye aktar
-      #   3) keytool -list ile keystore'un gerçekten açılabildiğini doğrula
-      #   4) Herhangi bir adım eksik/bozuksa ANLAŞILIR hata ile dur
+      # prepare-signing.sh GÖMÜLÜ — görevi:
+      #   1) KEYSTORE_BASE64 -> $RUNNER_TEMP/release.jks
+      #   2) KEYSTORE_PATH / _PASSWORD / KEY_ALIAS / KEY_PASSWORD -> $GITHUB_ENV
+      #   3) keytool -list ile keystore'un açılabildiğini doğrula
+      #   4) Eksik/bozuksa ANLAŞILIR hatayla dur
       - name: "🔐 [release] Keystore'u çöz ve doğrula (gömülü hazırlık)"
         id: keystore
         shell: bash
@@ -362,10 +359,10 @@ jobs:
         run: |
           echo "::group::1) Base64 -> JKS çözme"
           if [ -z "${KEYSTORE_BASE64:-}" ]; then
-            echo "::error::KEYSTORE_BASE64 secret'ı tanımlı değil. Release APK üretilemez. (generate-keystore.yml ile üretip Settings → Secrets'a ekleyin.)"
+            echo "::error::KEYSTORE_BASE64 secret'ı tanımlı değil. Release APK üretilemez."
+            echo "  Çözüm: generate-keystore.yml ile anahtar üretin ve Settings → Secrets → Actions'a ekleyin."
             exit 1
           fi
-          # Boşluk / satır sonu / \r hepsini temizle (aksi halde decode bozulur)
           CLEAN_B64=$(printf '%s' "$KEYSTORE_BASE64" | tr -d '[:space:]')
           if ! printf '%s' "$CLEAN_B64" | base64 --decode > "$RUNNER_TEMP/release.jks" 2>/dev/null; then
             echo "::error::KEYSTORE_BASE64 base64 olarak çözülemedi. Tek satır, boşluksuz olmalı (base64 -w0 kft.jks)."
@@ -386,7 +383,7 @@ jobs:
             echo "KEY_ALIAS=$KEY_ALIAS"
             echo "KEY_PASSWORD=$KEY_PASSWORD"
           } >> "$GITHUB_ENV"
-          echo "KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD -> \$GITHUB_ENV"
+          echo "  -> \$GITHUB_ENV'ye yazıldı"
           echo "::endgroup::"
 
           echo "::group::3) keytool ile doğrula (alias gerçekten var mı?)"
@@ -401,7 +398,7 @@ jobs:
             echo "::error::Keystore açılamadı veya '$KEY_ALIAS' alias'ı yok. KEYSTORE_PASSWORD veya KEY_ALIAS hatalı."
             exit 1
           fi
-          echo "✅ Keystore ve '$KEY_ALIAS' alias'ı doğrulandı."
+          echo "  ✅ Keystore ve '$KEY_ALIAS' alias'ı doğrulandı."
           echo "::endgroup::"
 
       - name: "🔎 [release] Ortam ön kontrolü"
