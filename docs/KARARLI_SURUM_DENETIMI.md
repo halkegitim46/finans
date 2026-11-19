@@ -2,7 +2,7 @@
 
 Kapsam: ana kod (143 dosya, ~13 bin satır), testler (42 dosya, ~5 bin satır), manifest, Gradle ve CI.
 Yöntem: otomatik taramalar (kullanılmayan içe aktarma, riskli kalıplar, katman bağımlılık yönü, tekrarlanan kod, saat kaynağı, istisna yönetimi, yedekleme/manifest ayarları) + riskli noktaların elle incelenmesi.
-**Sınırlama:** bu ortamda derleme/test çalıştırılamaz; tüm değişiklikler CI'da (APK Derle + testler) doğrulanır.
+**Sınırlama:** bu ortamda derleme/test çalıştırılamaz; tüm değişiklikler CI'da (Android CI + Release: testler + derleme) doğrulanır.
 
 ## 1. Güçlü yönler (korunacak)
 | İlke | Durum |
@@ -34,7 +34,7 @@ Yöntem: otomatik taramalar (kullanılmayan içe aktarma, riskli kalıplar, katm
 - `code-quality.yml` (elle): Android Lint + detekt raporu; derlemeyi etkilemez.
 
 ## 4. Kararlı sürüm için kontrol listesi
-1. Actions "APK Derle (Debug + Release)" yeşil, 0 test hatası; artifact'ta `FinansTakip_V<N>_release.apk` ve `mapping-V<N>` var.
+1. Actions "Android CI + Release" yeşil, 0 test hatası; artifact'ta `FinansTakip_V<N>_release.apk` ve `mapping-V<N>` var.
 2. "Proje dosyalarını tamamla" çalıştırıldı: `gradlew`, `gradle/wrapper`, `app/schemas/**/3.json` depoda (şema/migration testleri tam etkin).
 3. Telefonda (release APK): kurulum → kilit kurulumu → kişi/fatura/işlem ekle → PDF/CSV dışa aktar → yedek al/geri yükle → ajanda notu bildirimi → kasa ekle/kopyala/kilit → arka plana alıp dönüşte kilit.
 4. Yükseltme denemesi: önceki sürümün üstüne kur; veriler korunmalı (şema 1→3).
@@ -52,3 +52,13 @@ Yöntem: otomatik taramalar (kullanılmayan içe aktarma, riskli kalıplar, katm
 | 16 | Bilgi | `HomeViewModel` birleştirme akışının (özet + ajanda + hareketler) otomatik testi yok; mantığı oluşturan parçalar (`AgendaBuilder`, depolar) testli. | **Öneri**. |
 
 Ek taramalar temiz çıktı: yaşam döngüsüz `collectAsState` yok, tıklanabilir simgelerde eksik `contentDescription` yok, hiçbir yerde `Log/println` yok, kullanılmayan import kalmadı, kullanılmayan kaynak dosyası yok.
+
+## 6. CI/CD iyileştirmeleri (yüklenen `android-build_1.yml` üzerinde)
+| # | Önem | Bulgu | Durum |
+|---|---|---|---|
+| 17 | Orta | Test adımı `shell: bash` (örtük `-e`) altında `pipefail` ile çalışıyordu: test kırılınca adım, hata özetini yazan bölüme gelmeden sonlanıyordu; ayrıca `continue-on-error` yüzünden `build` işi testler kırıkken YEŞİL bitiyordu. | **Düzeltildi**: sonuç elle yönetiliyor, özet her zaman yazılıyor, test kırıksa iş APK yüklendikten sonra KIRMIZI bitiyor. |
+| 18 | Orta | `versionCode = run_number` (küçük sayı): önceki zaman damgalı sürümler telefonda kuruluysa Android "downgrade" diye reddederdi. | **Düzeltildi**: ortak, hep artan zaman damgalı kod (UTC dakika). |
+| 19 | Orta | Parolalar iş düzeyi `env` ve `GITHUB_ENV` ile TÜM sonraki adımlara (üçüncü taraf `softprops/action-gh-release` dahil) açıktı. | **Düzeltildi**: yalnızca imza ve Gradle adımına verilir; `GITHUB_ENV`'e sadece anahtar dosya yolu yazılır; GitHub Release `gh` CLI ile (üçüncü taraf eylem kaldırıldı). |
+| 20 | Düşük | Preflight: `proguard-rules.pro` yanlış yol (hep "YOK"), `KEY_ALIAS` özet satırında değer iki kez yazılıyordu. | **Düzeltildi**. |
+| 21 | Düşük | Debug APK rastgele anahtarla imzalanıyordu (güncelleme çakışması). | **Düzeltildi**: sabit anahtar varsa debug de onunla imzalanır (PR'larda atlanır). |
+| 22 | Düşük | Tekrarlanan adımlar (JDK/Gradle/wrapper/sürüm/imza), satır sonu (CRLF) riski, wrapper doğrulaması yok, bağımlılık güncelleme otomasyonu yok. | **Düzeltildi**: ortak bileşik eylem + test edilmiş betikler, `.gitattributes`, wrapper doğrulama (depoda varsa), `dependabot.yml`, Lint işi, genel durum özeti, artifact saklama süreleri. |

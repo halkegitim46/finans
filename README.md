@@ -46,13 +46,20 @@ Yerel/CI derlemesi wrapper varsa onu kullanır; yoksa geçici olarak üretir.
 Actions → **"Cihaz testleri (emülatör)"**: gerçek SQLCipher (anahtarla açma, yanlış anahtar reddi, dosyanın düz SQLite olmaması) ve gerçek Android Keystore
 (sarma/açma, anahtar kaybı) testlerini emülatörde koşar. Birim testlerinde (JVM) bu yerel kütüphaneler çalışmadığı için ayrı tutulur.
 
-## Hangi APK nereden çıkar?
-Tek iş akışı: **APK Derle (Debug + Release)**. Her `push`ta (veya Actions'tan elle) tek bir işte sırayla Debug APK, imzalı Release APK (R8 küçültmeli) ve `mapping` dosyası üretilip yüklenir; birim testleri bunlardan SONRA koşar (test hatası APK'ları engellemez, iş yine kırmızı olur).
-APK'lar çalışma sayfasının altındaki **Artifacts** bölümündedir: `FinansTakip_V<N>.apk` (debug), `FinansTakip_V<N>_release.apk` (release, günlük kullanım için bunu kurun), `mapping-V<N>` (çökme kayıtlarını çözmek için). İmza secret'ları eksikse debug yine çıkar, release atlanır ve sarı uyarı verilir.
-Elle çalıştırırken `minify=false` ile R8 kapatılabilir.
+## CI iş akışı ve APK'lar
+Tek dosya: `.github/workflows/android-build.yml` (**Android CI + Release**). İşler: `preflight → version → (build | quality | release) → summary`, etiketli sürümde release içinde GitHub Release.
+- **preflight**: secret'ların ve proje dosyalarının varlığını (değer göstermeden) ve sürüm satırlarının uyumunu derlemeden önce denetler.
+- **version**: tek, ortak sürüm: `versionCode` = UTC dakika damgası (hep artar), `versionName` = `1.0.<yılaygünsaatdakika>` (etiket `v1.2.3` ise `1.2.3`).
+- **build**: birim testleri + debug APK. Testler kırık olsa bile APK üretilir ve yüklenir; iş en sonda yine kırmızı biter. Kırık testler iş özetinde listelenir.
+- **release**: imzalı + R8'li APK, `apksigner` ile doğrulanır; imza secret'ı eksik/hatalıysa nedenini yazarak durur (asla sessizce debug anahtarıyla imzalamaz). Parolalar yalnızca ilgili adımın ortamına verilir. `v*` etiketinde GitHub Release de oluşturulur (üçüncü taraf eylem yok, `gh` ile).
+- **quality**: Android Lint (bilgi amaçlı, sonucu iş akışını bozmaz).
+- **summary**: tüm işlerin sonucu tek tabloda (dal korumasında tek "gerekli kontrol" olarak kullanılabilir).
+APK'lar çalışma sayfasının altındaki **Artifacts** bölümündedir: `...-release-apk` (günlük kullanım), `...-debug-apk`, `mapping-v<sürüm>` (çökme kayıtlarını çözmek için, saklayın).
+Elle çalıştırırken Release'i kapatabilir, `minify=false` seçebilir, sürüm adı verebilirsiniz. Betikler `.github/scripts/` altındadır (`prepare-signing.sh`, `apply-version.sh`, `verify-release-apk.sh`, `summarize-tests.py`); ortak kurulum `.github/actions/setup-android-build`.
+`.gitattributes` betiklerin satır sonunu LF'ye sabitler; `dependabot.yml` Gradle ve Actions güncellemelerini haftalık PR olarak getirir.
 
 ## Sürüm numaraları
-`versionCode`, derleme anının UTC dakikasıdır (`date +%s / 60`); `versionName` `1.0.<yılaygünsaatdakika>` biçimindedir. "APK Derle" ve "Release APK" iş akışlarının `run_number` sayaçları ayrı olduğundan
+`versionCode`, derleme anının UTC dakikasıdır (`date +%s / 60`); `versionName` `1.0.<yılaygünsaatdakika>` biçimindedir. Önceden ayrı çalışan iş akışlarının `run_number` sayaçları ayrı olduğundan
 ortak, hep artan bir kod gerekir: aksi halde daha düşük kodlu bir APK (ör. release #2), kurulu daha yüksek kodlu bir sürümün (debug #31) üstüne kurulamaz ("downgrade" engeli).
 Dosya adlarındaki `V<N>` yalnızca ilgili iş akışının sıra numarasıdır.
 
@@ -85,7 +92,7 @@ Debug ve release derlemeleri aynı anahtarı kullanır; imza parmak izi her çal
 Not: anahtarı sabitledikten sonraki **ilk** kurulumda, rastgele anahtarla kurulu eski sürümü kaldırmanız gerekir (bir kereye mahsus).
 
 ## Release APK
-Actions → **APK Derle (Debug + Release)** → Run workflow. Secret'lar yoksa durur (asla debug anahtarıyla imzalamaz). Testler geçmeden üretmez,
+Actions → **Android CI + Release** → Run workflow. Secret'lar yoksa durur (asla debug anahtarıyla imzalamaz). Testler geçmeden üretmez,
 imzayı `apksigner` ile doğrular, `FinansTakip_V<N>_release.apk` ve R8 `mapping-V<N>` artifact'larını yükler.
 Release APK açılışta çöküyorsa `minify` seçeneğini `false` yapıp yeniden çalıştırın (R8 kuralları gerçek cihazda henüz denenmedi) ve hatayı bildirin.
 
