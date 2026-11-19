@@ -144,14 +144,10 @@ fun AppRoot(
                         HomeScreen(
                             onOpenOccurrence = { nav.navigate(Routes.invoiceDetail(it)) },
                             onOpenPerson = { nav.navigate(Routes.personDetail(it)) },
-                            onAddInvoice = { nav.navigate(Routes.invoiceEdit(0)) },
                             onAddPerson = { nav.navigate(Routes.personEdit(0)) },
-                            onSeeInvoices = { goTop(Routes.INVOICES) },
                             onSeeTransactions = { goTop(Routes.TRANSACTIONS) },
                             onSeeAgenda = { nav.navigate(Routes.AGENDA) },
-                            onAddAgenda = { nav.navigate(Routes.agendaEdit(0)) },
-                            onOpenAgendaNote = { nav.navigate(Routes.agendaEdit(it)) },
-                            onOpenVault = { nav.navigate(Routes.VAULT) }
+                            onOpenAgendaNote = { nav.navigate(Routes.agendaEdit(it)) }
                         )
                     }
                     composable(Routes.VAULT) {

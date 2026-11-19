@@ -226,3 +226,9 @@ Kilit/Kurulum → Ana Sayfa | Kişiler (liste→detay) | Faturalar (liste→deta
   Tehdit modeli: kilitli/çalınmış cihaz ve dosya sızıntısı korunur; kilidi açık cihazda kasa yeniden doğrulama ister; kök (root) erişimli kötü amaçlı yazılım ve ekran kaydı kapsam dışıdır.
 - **Yedek uyumu**: dbVersion 3 yedekte `vaultItems` zorunlu; dbVersion 1-2 yedeklerde yoktur ve boş kabul edilir. Doğrulayıcı kasa kurallarını (benzersiz kimlik, başlık/şifre dolu, alan uzunlukları) denetler; hata iletileri şifre içermez.
 - **Şifre üretici**: `SecureRandom`, seçilen her sınıftan en az bir karakter, Fisher-Yates karıştırma; güç tahmini entropi + yaygın şifre/tekrar cezası (`PasswordStrength`).
+
+## Ana Sayfa (yeniden tasarım)
+- **İlke**: ekranda yalnızca günlük karar için gerekenler; ayrıntı ve nadir eylemler kendi bölümünde veya yan menüde.
+- **Bileşenler**: `SummaryCard` (net durum + bu ay), `QuickActions` (4 işlem: Alacak ekle, Borç ekle, Tahsilat, Ödeme), "Dikkat gerektirenler" (`AgendaBuilder`, geciken + 7 gün, en çok 5 satır, `AgendaEntryCard` ile), "Son hareketler" (5 satır), ilk kullanımda `WelcomeCard`.
+- **Kaldırılanlar** (işlev başka yerde duruyor): fatura ekle düğmesi (Faturalar), ajanda notu düğmesi (Ajanda), şifre kasası düğmesi (yan menü/Ayarlar), ayrı "Geciken/Yaklaşan faturalar" listeleri (tek listede birleşti), ay toplam kartlarının ikiye bölünmüşlüğü (tek satıra indi).
+- **Durum**: `HomeState` (özet, `attention`, `attentionOverdue`, `recent`, `persons`); gün değişince `DayTicker` ile yeniden hesaplanır. Eski `HomeLogic.splitInvoices` ölü kod olarak silindi.

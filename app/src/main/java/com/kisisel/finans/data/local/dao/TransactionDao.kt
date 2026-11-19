@@ -29,12 +29,6 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions ORDER BY createdAt DESC, id DESC LIMIT :limit")
     fun observeRecent(limit: Int): Flow<List<TransactionEntity>>
 
-    @Query(
-        "SELECT * FROM transactions WHERE transactionDate BETWEEN :fromDay AND :toDay " +
-            "ORDER BY transactionDate DESC, id DESC"
-    )
-    suspend fun getBetween(fromDay: Long, toDay: Long): List<TransactionEntity>
-
     /** Silme yok: iptal. Zaten iptalse 0 döner. */
     @Query("UPDATE transactions SET isCancelled = 1, cancelledAt = :now, updatedAt = :now WHERE id = :id AND isCancelled = 0")
     suspend fun cancel(id: Long, now: Long): Int

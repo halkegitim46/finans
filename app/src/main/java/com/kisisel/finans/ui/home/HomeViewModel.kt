@@ -6,7 +6,6 @@ import com.kisisel.finans.agenda.AgendaBuilder
 import com.kisisel.finans.agenda.AgendaEntry
 import com.kisisel.finans.core.DayTicker
 import com.kisisel.finans.domain.model.DashboardTotals
-import com.kisisel.finans.domain.model.InvoiceOccurrence
 import com.kisisel.finans.domain.model.LedgerLine
 import com.kisisel.finans.domain.model.PersonSummary
 import com.kisisel.finans.domain.model.TransactionType
@@ -27,16 +26,18 @@ import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 import javax.inject.Inject
 
+/**
+ * Ana Sayfa durumu: özet, "dikkat gerektirenler" (geciken + önümüzdeki 7 gün: fatura vadeleri, borç/alacak vadeleri, notlar)
+ * ve son hareketler. Ayrıntılı listeler kendi bölümlerindedir (Faturalar, İşlemler, Ajanda).
+ */
 data class HomeState(
     val today: LocalDate,
     val totals: DashboardTotals? = null,
-    val overdue: List<InvoiceOccurrence> = emptyList(),
-    val upcoming: List<InvoiceOccurrence> = emptyList(),
+    val attention: List<AgendaEntry> = emptyList(),
+    val attentionOverdue: Int = 0,
     val recent: List<LedgerLine> = emptyList(),
+    /** Hızlı işlem kişi seçici için; ekranda liste olarak gösterilmez. */
     val persons: List<PersonSummary> = emptyList(),
-    /** Ajanda önizlemesi: notlar ve vadesi olan borç/alacaklar (faturalar zaten kendi bölümlerinde). */
-    val agenda: List<AgendaEntry> = emptyList(),
-    val agendaOverdueCount: Int = 0,
     val loaded: Boolean = false
 )
 
@@ -52,7 +53,7 @@ class HomeViewModel @Inject constructor(
     private val dayTicker: DayTicker
 ) : ViewModel() {
 
-    /** Gün değişince (ay toplamları, geciken/yaklaşan faturalar, ajanda dahil) yeniden hesaplanır. */
+    /** Gün değişince (ay toplamları, geciken/yaklaşan kalemler dahil) yeniden hesaplanır. */
     val state: StateFlow<HomeState> = dayTicker.today.flatMapLatest { today ->
         combine(
             ledger.observeDashboard(today),
@@ -61,18 +62,14 @@ class HomeViewModel @Inject constructor(
             ledger.observePersonSummaries(),
             combine(ledger.observeClaims(), agenda.observeAll()) { claims, notes -> claims to notes }
         ) { totals, occurrences, recent, persons, (claims, notes) ->
-            val split = splitInvoices(occurrences, today)
-            val view = AgendaBuilder.build(occurrences, claims, notes, today, windowDays = 7)
-            val preview = (view.overdue + view.days.flatMap { it.entries }).filter { it !is AgendaEntry.Invoice }
+            val view = AgendaBuilder.build(occurrences, claims, notes, today, windowDays = ATTENTION_DAYS)
             HomeState(
                 today = today,
                 totals = totals,
-                overdue = split.overdue,
-                upcoming = split.upcoming,
+                attention = (view.overdue + view.days.flatMap { it.entries }).take(ATTENTION_PREVIEW),
+                attentionOverdue = view.overdue.size,
                 recent = recent,
                 persons = persons,
-                agenda = preview.take(AGENDA_PREVIEW),
-                agendaOverdueCount = view.overdue.count { it !is AgendaEntry.Invoice },
                 loaded = true
             )
         }
@@ -105,7 +102,8 @@ class HomeViewModel @Inject constructor(
     }
 
     private companion object {
-        const val RECENT_LIMIT = 8
-        const val AGENDA_PREVIEW = 5
+        const val RECENT_LIMIT = 5
+        const val ATTENTION_DAYS = 7L
+        const val ATTENTION_PREVIEW = 5
     }
 }

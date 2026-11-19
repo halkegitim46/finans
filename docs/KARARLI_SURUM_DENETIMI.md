@@ -41,3 +41,14 @@ Yöntem: otomatik taramalar (kullanılmayan içe aktarma, riskli kalıplar, katm
 5. Pil tasarrufu/bildirim izni kapalı senaryoda uyarılar (Ayarlar) doğru.
 6. İmza anahtarı (`.jks`) ve parolaları güvenli yerde yedekli; aynı anahtarla imzalamaya devam edin.
 7. Sürüm notu: bilinen sınırlar (README) güncel.
+
+## 5. İkinci tur (Ana Sayfa yeniden tasarımı + ölü kod temizliği)
+| # | Önem | Bulgu | Durum |
+|---|---|---|---|
+| 12 | Orta | Ana Sayfa'da 7 hızlı işlem düğmesi ve aynı bilgiyi tekrarlayan üç liste (ajanda, geciken faturalar, yaklaşan faturalar) vardı; ilk bakışta karar vermek zordu. | **Yeniden tasarlandı**: net durum özeti, 4 hızlı işlem, tek "dikkat gerektirenler" listesi (geciken + 7 gün, fatura/vade/not), son 5 hareket, ilk kullanımda karşılama kartı. Fatura ekle, ajanda notu ve kasa düğmeleri ekrandan kalktı (yan menüde/kendi bölümlerinde). |
+| 13 | Düşük | Ölü kod: `InvoiceDao.observeUnpaidBetween`, `TransactionDao.getBetween`, `occurrenceIdOfKey` (yalnızca testte kullanılıyordu), `HomeLogic.splitInvoices` + testi. | **Silindi** (şemayı etkilemez). |
+| 14 | Bilgi | Ana Sayfa'da `HomeDialog.PickPaymentKind(val unused: Int = 0)` gereksiz yer tutucu parametre. | **Düzeltildi** (`data object`). |
+| 15 | Bilgi | Kullanılmayan bağımlılıklar: `compose.ui.tooling.preview` (hiç `@Preview` yok), katalogda `room-testing`. | **Öneri**: kendi düzenlediğiniz `build.gradle.kts` ile çakışmamak için dokunulmadı; isterseniz kaldırılır. |
+| 16 | Bilgi | `HomeViewModel` birleştirme akışının (özet + ajanda + hareketler) otomatik testi yok; mantığı oluşturan parçalar (`AgendaBuilder`, depolar) testli. | **Öneri**. |
+
+Ek taramalar temiz çıktı: yaşam döngüsüz `collectAsState` yok, tıklanabilir simgelerde eksik `contentDescription` yok, hiçbir yerde `Log/println` yok, kullanılmayan import kalmadı, kullanılmayan kaynak dosyası yok.

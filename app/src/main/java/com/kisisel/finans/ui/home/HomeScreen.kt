@@ -5,23 +5,31 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -33,48 +41,49 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kisisel.finans.agenda.AgendaEntry
 import com.kisisel.finans.core.Money
 import com.kisisel.finans.domain.model.DashboardTotals
-import com.kisisel.finans.domain.model.InvoiceOccurrence
 import com.kisisel.finans.domain.model.LedgerLine
 import com.kisisel.finans.domain.model.PersonSummary
 import com.kisisel.finans.domain.model.TransactionType
-import com.kisisel.finans.ui.common.dialogTitle
 import com.kisisel.finans.ui.agenda.AgendaEntryCard
 import com.kisisel.finans.ui.agenda.agendaEntryKey
 import com.kisisel.finans.ui.common.NotificationsBanner
-import com.kisisel.finans.ui.common.rememberNotificationsEnabled
-import com.kisisel.finans.ui.common.dueStatusText
+import com.kisisel.finans.ui.common.dialogTitle
 import com.kisisel.finans.ui.common.label
+import com.kisisel.finans.ui.common.rememberNotificationsEnabled
 import com.kisisel.finans.ui.common.tr
-import com.kisisel.finans.ui.persons.EntryDialog
-import java.time.LocalDate
 import com.kisisel.finans.ui.navigation.MenuNavigationIcon
+import com.kisisel.finans.ui.persons.EntryDialog
 
 private sealed interface HomeDialog {
-    data class PickPaymentKind(val unused: Int = 0) : HomeDialog
+    data object PickPaymentKind : HomeDialog
     data class PickPerson(val type: TransactionType) : HomeDialog
     data class Entry(val type: TransactionType, val personId: Long, val personName: String) : HomeDialog
 }
 
+/**
+ * Ana Sayfa: yalnızca günlük karar için gerekenler.
+ *  1) Net durum özeti  2) Dört hızlı işlem  3) Dikkat gerektirenler (geciken + 7 gün)  4) Son hareketler.
+ * Fatura ekleme, ajanda notu, şifre kasası vb. yan menüde ve kendi bölümlerindedir.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     onOpenOccurrence: (Long) -> Unit,
     onOpenPerson: (Long) -> Unit,
-    onAddInvoice: () -> Unit,
     onAddPerson: () -> Unit,
-    onSeeInvoices: () -> Unit,
     onSeeTransactions: () -> Unit,
     onSeeAgenda: () -> Unit,
-    onAddAgenda: () -> Unit,
     onOpenAgendaNote: (Long) -> Unit,
-    onOpenVault: () -> Unit,
     vm: HomeViewModel = hiltViewModel()
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -88,31 +97,35 @@ fun HomeScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             if (!notificationsEnabled) item { NotificationsBanner() }
 
-            state.totals?.let { t -> item { TotalsSection(t) } }
+            if (state.loaded && state.persons.isEmpty()) item { WelcomeCard(onAddPerson) }
+
+            state.totals?.let { totals -> item { SummaryCard(totals) } }
 
             item {
                 QuickActions(
                     onLend = { dialog = HomeDialog.PickPerson(TransactionType.LEND) },
                     onBorrow = { dialog = HomeDialog.PickPerson(TransactionType.BORROW) },
-                    onInvoice = onAddInvoice,
-                    onPay = { dialog = HomeDialog.PickPaymentKind() },
                     onCollect = { dialog = HomeDialog.PickPerson(TransactionType.COLLECTION) },
-                    onAgenda = onAddAgenda,
-                    onVault = onOpenVault
+                    onPay = { dialog = HomeDialog.PickPaymentKind }
                 )
             }
 
             item {
-                SectionHeader("Ajanda: notlar ve vadeler", "Tümü", onSeeAgenda, isAlert = state.agendaOverdueCount > 0)
+                SectionHeader(
+                    title = if (state.attentionOverdue > 0) "Dikkat gerektirenler (${state.attentionOverdue} geciken)" else "Yaklaşanlar (7 gün)",
+                    action = "Ajanda",
+                    onAction = onSeeAgenda,
+                    isAlert = state.attentionOverdue > 0
+                )
             }
-            if (state.loaded && state.agenda.isEmpty()) {
-                item { Text("Ajandanızda yaklaşan not veya vade yok.", style = MaterialTheme.typography.bodyMedium) }
+            if (state.loaded && state.attention.isEmpty()) {
+                item { Text("Gecikmiş veya önümüzdeki 7 günde vadesi gelen bir şey yok.", style = MaterialTheme.typography.bodyMedium) }
             }
-            items(state.agenda, key = { "ag" + agendaEntryKey(it) }) { entry ->
+            items(state.attention, key = { "a" + agendaEntryKey(it) }) { entry ->
                 AgendaEntryCard(
                     entry = entry,
                     today = state.today,
@@ -126,33 +139,18 @@ fun HomeScreen(
                 )
             }
 
-            if (state.overdue.isNotEmpty()) {
-                item { SectionHeader("Geciken faturalar", "Tümü", onSeeInvoices, isAlert = true) }
-                items(state.overdue.take(5), key = { "o${it.id}" }) {
-                    InvoiceMini(it, state.today) { onOpenOccurrence(it.id) }
-                }
-            }
-
-            item { SectionHeader("Yaklaşan faturalar (30 gün)", "Tümü", onSeeInvoices) }
-            if (state.loaded && state.upcoming.isEmpty()) {
-                item { Text("Önümüzdeki 30 günde ödenecek fatura yok.", style = MaterialTheme.typography.bodyMedium) }
-            }
-            items(state.upcoming.take(5), key = { "u${it.id}" }) {
-                InvoiceMini(it, state.today) { onOpenOccurrence(it.id) }
-            }
-
-            item { SectionHeader("Son işlemler", "Tümü", onSeeTransactions) }
+            item { SectionHeader("Son hareketler", "Tümü", onSeeTransactions) }
             if (state.loaded && state.recent.isEmpty()) {
                 item { Text("Henüz işlem yok.", style = MaterialTheme.typography.bodyMedium) }
             }
-            items(state.recent, key = { "r${it.entry.id}" }) {
-                LineMini(it) { onOpenPerson(it.entry.personId) }
+            items(state.recent, key = { "r${it.entry.id}" }) { line ->
+                LineMini(line) { onOpenPerson(line.entry.personId) }
             }
         }
     }
 
     when (val d = dialog) {
-        is HomeDialog.PickPaymentKind -> AlertDialog(
+        HomeDialog.PickPaymentKind -> AlertDialog(
             onDismissRequest = { dialog = null },
             title = { Text("Ödeme yap") },
             text = { Text("Ne tür bir ödeme yapıyorsunuz?") },
@@ -199,15 +197,31 @@ fun HomeScreen(
     }
 }
 
+/** İlk kullanım: henüz kişi yokken yol gösterir. */
 @Composable
-private fun TotalsSection(t: DashboardTotals) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-            Column(Modifier.padding(16.dp)) {
-                Text("Net bakiye (alacak − borç)", style = MaterialTheme.typography.labelLarge)
+private fun WelcomeCard(onAddPerson: () -> Unit) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Hoş geldiniz", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Alacak, borç ve faturalarınızı takip etmek için önce bir kişi ekleyin.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Button(onClick = onAddPerson) { Text("İlk kişiyi ekle") }
+        }
+    }
+}
+
+/** Tek bakışta durum: net bakiye, toplam alacak/borç ve bu ayın hareketi. */
+@Composable
+private fun SummaryCard(t: DashboardTotals) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column {
+                Text("Net durum (alacak − borç)", style = MaterialTheme.typography.labelLarge)
                 Text(
                     Money.format(t.net),
                     style = MaterialTheme.typography.headlineLarge,
@@ -215,59 +229,46 @@ private fun TotalsSection(t: DashboardTotals) {
                     color = if (t.net >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                 )
             }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            StatCard("Toplam alacak", t.remainingReceivable, MaterialTheme.colorScheme.primary, Modifier.weight(1f))
-            StatCard("Toplam borç", t.remainingPayable, MaterialTheme.colorScheme.error, Modifier.weight(1f))
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            StatCard("Bu ay ödemeler", t.monthPaid, Color.Unspecified, Modifier.weight(1f))
-            StatCard("Bu ay tahsilatlar", t.monthCollected, Color.Unspecified, Modifier.weight(1f))
-        }
-    }
-}
-
-@Composable
-private fun StatCard(label: String, kurus: Long, color: Color, modifier: Modifier) {
-    Card(modifier = modifier) {
-        Column(Modifier.padding(12.dp)) {
-            Text(label, style = MaterialTheme.typography.labelMedium)
+            Row(Modifier.fillMaxWidth()) {
+                Balance("Toplam alacak", t.remainingReceivable, MaterialTheme.colorScheme.primary, Modifier.weight(1f))
+                Balance("Toplam borç", t.remainingPayable, MaterialTheme.colorScheme.error, Modifier.weight(1f))
+            }
+            HorizontalDivider()
             Text(
-                Money.format(kurus),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = color
+                "Bu ay: ${Money.format(t.monthCollected)} tahsilat • ${Money.format(t.monthPaid)} ödeme",
+                style = MaterialTheme.typography.bodySmall
             )
         }
     }
 }
 
 @Composable
-private fun QuickActions(
-    onLend: () -> Unit,
-    onBorrow: () -> Unit,
-    onInvoice: () -> Unit,
-    onPay: () -> Unit,
-    onCollect: () -> Unit,
-    onAgenda: () -> Unit,
-    onVault: () -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Hızlı işlemler", style = MaterialTheme.typography.titleMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilledTonalButton(onClick = onLend, modifier = Modifier.weight(1f)) { Text("Alacak ekle") }
-            FilledTonalButton(onClick = onBorrow, modifier = Modifier.weight(1f)) { Text("Borç ekle") }
+private fun Balance(label: String, kurus: Long, color: Color, modifier: Modifier) {
+    Column(modifier) {
+        Text(label, style = MaterialTheme.typography.labelMedium)
+        Text(Money.format(kurus), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = color)
+    }
+}
+
+/** En sık dört işlem; diğer eylemler (fatura ekleme, not, kasa) yan menüde ve kendi bölümlerinde. */
+@Composable
+private fun QuickActions(onLend: () -> Unit, onBorrow: () -> Unit, onCollect: () -> Unit, onPay: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        QuickAction(Icons.Filled.ArrowUpward, "Alacak ekle", onLend, Modifier.weight(1f))
+        QuickAction(Icons.Filled.ArrowDownward, "Borç ekle", onBorrow, Modifier.weight(1f))
+        QuickAction(Icons.Filled.Payments, "Tahsilat", onCollect, Modifier.weight(1f))
+        QuickAction(Icons.Filled.CreditCard, "Ödeme", onPay, Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun QuickAction(icon: ImageVector, label: String, onClick: () -> Unit, modifier: Modifier) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        FilledTonalIconButton(onClick = onClick, modifier = Modifier.size(56.dp)) {
+            Icon(icon, contentDescription = label)
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilledTonalButton(onClick = onInvoice, modifier = Modifier.weight(1f)) { Text("Fatura ekle") }
-            FilledTonalButton(onClick = onPay, modifier = Modifier.weight(1f)) { Text("Ödeme yap") }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onCollect, modifier = Modifier.weight(1f)) { Text("Tahsilat al") }
-            FilledTonalButton(onClick = onAgenda, modifier = Modifier.weight(1f)) { Text("Ajanda notu") }
-        }
-        // Yalnızca kısayol: kasanın içeriği burada görünmez; açılırken yeniden doğrulama istenir.
-        OutlinedButton(onClick = onVault, modifier = Modifier.fillMaxWidth()) { Text("Şifre Kasası") }
+        Spacer(Modifier.height(4.dp))
+        Text(label, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center, maxLines = 1)
     }
 }
 
@@ -277,32 +278,10 @@ private fun SectionHeader(title: String, action: String, onAction: () -> Unit, i
         Text(
             title,
             style = MaterialTheme.typography.titleMedium,
-            color = if (isAlert) MaterialTheme.colorScheme.error else Color.Unspecified
+            color = if (isAlert) MaterialTheme.colorScheme.error else Color.Unspecified,
+            modifier = Modifier.weight(1f)
         )
         TextButton(onClick = onAction) { Text(action) }
-    }
-}
-
-@Composable
-private fun InvoiceMini(o: InvoiceOccurrence, today: LocalDate, onClick: () -> Unit) {
-    val overdue = o.isOverdue(today)
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(o.name, style = MaterialTheme.typography.titleSmall)
-                Text(
-                    listOfNotNull(o.personName, "${o.dueDate.tr()} • ${dueStatusText(o.status, o.daysUntilDue(today))}")
-                        .joinToString(" • "),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (overdue) MaterialTheme.colorScheme.error else Color.Unspecified
-                )
-            }
-            Text(
-                o.amountKurus?.let { Money.format(it) } ?: "Tutar yok",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
     }
 }
 
@@ -322,7 +301,7 @@ private fun LineMini(line: LedgerLine, onClick: () -> Unit) {
                 Money.format(e.amountKurus),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                textDecoration = if (e.isCancelled) androidx.compose.ui.text.style.TextDecoration.LineThrough else null
+                textDecoration = if (e.isCancelled) TextDecoration.LineThrough else null
             )
         }
     }

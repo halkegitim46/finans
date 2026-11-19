@@ -45,7 +45,7 @@ Bildirimde fatura adı, tutar ve son ödeme tarihi vardır; kilit ekranında yal
 Ana bölümlerin (Anasayfa, Kişiler, Faturalar, İşlemler, Raporlar, Ayarlar) sol üst köşesindeki **☰** düğmesine dokunarak ya da ekranı soldan sağa kaydırarak yan menüyü açarsınız. Menüde altı ana bölümün yanı sıra **Ajanda** ve **Şifre Kasası** da vardır. Geri tuşu açık menüyü kapatır.
 
 ## 5b. Ajanda ve notlar
-Ana Sayfa'daki **Ajanda** bölümünden veya "Ajanda notu" düğmesinden açılır. Ajanda; ödenmemiş faturalarınızı, vadesi olan borç/alacaklarınızı ve kendi notlarınızı **günlere göre** tek listede gösterir
+Ana Sayfa'daki **Ajanda** bağlantısından veya yan menüden (☰ → Ajanda) açılır; not eklemek için Ajanda'daki **Not ekle** düğmesi kullanılır. Ajanda; ödenmemiş faturalarınızı, vadesi olan borç/alacaklarınızı ve kendi notlarınızı **günlere göre** tek listede gösterir
 (Geciken → Bugün → Yarın → sonraki günler; 30 günden ilerisi "daha sonraki kayıtlar" olarak sayılır).
 - **Not ekle**: başlık, isteğe bağlı açıklama, tarih, **saat** (isteğe bağlı), ilgili kişi (isteğe bağlı) ve hatırlatma (hatırlatma yok / zamanında / 1 saat önce / 1 gün önce). Saat seçmezseniz hatırlatma o günün 09:00'unda yapılır.
 - Notun yanındaki kutuyla **tamamlandı** işaretlersiniz (geri alınabilir); tamamlananlar ayrı bölümde durur ve hatırlatma göndermez. Notu silerseniz arşivlenir.
@@ -53,7 +53,7 @@ Ana Sayfa'daki **Ajanda** bölümünden veya "Ajanda notu" düğmesinden açıl�
 - **Borç/alacak vade hatırlatmaları**: vadesi olan açık borç/alacaklar için vadeden 3 ve 1 gün önce, vade günü ve gecikince 3 günde bir bildirim gelir (Ayarlar → Bildirimler ve pil'den kapatılabilir). Faturadan doğan alacaklar ayrıca hatırlatılmaz; fatura hatırlatması geçerlidir.
 
 ## 5c. Şifre Kasası
-**Ana Sayfa'daki "Şifre Kasası" düğmesi** veya **Ayarlar → Güvenlik → Şifre Kasası**. Banka, e-posta, site, uygulama gibi hesap şifrelerinizi kaydedersiniz (başlık, kullanıcı adı, şifre, adres, not).
+**Yan menü (☰) → Şifre Kasası** veya **Ayarlar → Güvenlik → Şifre Kasası**. Banka, e-posta, site, uygulama gibi hesap şifrelerinizi kaydedersiniz (başlık, kullanıcı adı, şifre, adres, not).
 - **Açma**: Kasa her açılışta uygulama parolanızı/PIN'inizi veya biyometrinizi ayrıca ister (uygulama kilidi açık olsa bile). Açıkken 2 dakika işlem yapmazsanız, uygulamadan çıkarsanız veya üstteki kilit simgesine dokunursanız kilitlenir. Kasadan geri çıkınca da kilitlenir.
 - **Görüntüleme**: Şifreler listede hiç görünmez; ayrıntıda varsayılan olarak gizlidir (göz simgesiyle gösterirsiniz).
 - **Kopyalama**: Kullanıcı adı/şifre kopyalama düğmeleri panoyu "hassas" olarak işaretler ve 30 saniye sonra temizler. (Uygulama bu sürede kapatılırsa pano kendiliğinden temizlenmez; panoyu elle temizleyin.)
@@ -63,7 +63,12 @@ Ana Sayfa'daki **Ajanda** bölümünden veya "Ajanda notu" düğmesinden açıl�
 - **Önemli**: Uygulama parolanızı unutursanız kasaya da girilemez (kurtarma yolu yoktur); verileri sıfırlamak kasayı da siler. Başka bir parola yöneticisinin yerine geçmeyi hedeflemez (otomatik doldurma, tarayıcı eklentisi, çok cihaz senkronu yoktur).
 
 ## 6. Ana Sayfa ve İşlemler
-Ana Sayfa: net bakiye, toplam alacak/borç, bu ay ödemeler ve tahsilatlar, geciken ve yaklaşan faturalar, son işlemler, hızlı işlemler.
+**Ana Sayfa** yalnızca günlük karar için gerekenleri gösterir:
+1. **Net durum**: alacak − borç, toplam (kalan) alacak ve borç, bu ayın tahsilat/ödeme toplamı.
+2. **Dört hızlı işlem**: Alacak ekle, Borç ekle, Tahsilat, Ödeme (kişi seçip tutarı girersiniz).
+3. **Dikkat gerektirenler**: geciken kalemler ve önümüzdeki 7 gün içinde vadesi gelen faturalar, borç/alacak vadeleri ve notlarınız tek listede. Satıra dokununca ilgili kayıt açılır; "Ajanda" ile tam liste görülür.
+4. **Son hareketler**: son 5 işlem; "Tümü" ile İşlemler sekmesi.
+İlk kullanımda (henüz kişi yokken) "İlk kişiyi ekle" kartı çıkar. Fatura ekleme **Faturalar** sekmesinde, ajanda notu **Ajanda**'da, şifre kasası **yan menüde** ve Ayarlar'dadır.
 **İşlemler**: tüm kişilerin defteri; arama, tür filtresi, iptal edilenleri gösterme.
 
 ## 7. Raporlar

@@ -52,13 +52,6 @@ interface InvoiceDao {
     @Query("SELECT * FROM invoice_occurrences WHERE templateId = :templateId ORDER BY dueDate DESC")
     fun observeOccurrencesOfTemplate(templateId: Long): Flow<List<OccurrenceWithTemplate>>
 
-    @Transaction
-    @Query(
-        "SELECT * FROM invoice_occurrences WHERE status = 'UNPAID' " +
-            "AND dueDate BETWEEN :fromDay AND :toDay ORDER BY dueDate"
-    )
-    fun observeUnpaidBetween(fromDay: Long, toDay: Long): Flow<List<OccurrenceWithTemplate>>
-
     /** Gecikmiş = ödenmemiş ve vadesi bugünden önce. Gecikme durumu kayıtta tutulmaz, tarihten hesaplanır. */
     @Transaction
     @Query("SELECT * FROM invoice_occurrences WHERE status = 'UNPAID' AND dueDate < :todayDay ORDER BY dueDate")

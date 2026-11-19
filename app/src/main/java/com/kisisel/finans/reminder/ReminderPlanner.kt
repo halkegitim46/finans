@@ -30,9 +30,6 @@ data class PlannedReminder(
     val agendaId: Long? = null
 )
 
-/** Anahtardan fatura dönemi id'sini çıkarır ("12:d3" -> 12). Alacak/borç ("c12:...") ve ajanda ("a5:...") anahtarları için null. */
-fun occurrenceIdOfKey(key: String): Long? = key.substringBefore(':').toLongOrNull()
-
 /** Anahtarın sahibi: fatura dönemi "12", alacak/borç "c12", ajanda notu "a5". Eski anahtarları temizlemekte kullanılır. */
 fun ownerOfKey(key: String): String = key.substringBefore(':')
 

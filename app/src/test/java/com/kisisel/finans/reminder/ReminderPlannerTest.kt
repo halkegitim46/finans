@@ -8,7 +8,6 @@ import com.kisisel.finans.domain.model.OccurrenceStatus
 import com.kisisel.finans.domain.model.ReminderCandidate
 import com.kisisel.finans.domain.model.TransactionType
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
@@ -84,12 +83,6 @@ class ReminderPlannerTest {
     @Test fun paidAndCancelledAreSkipped() {
         assertEquals(0, plan(cand("2026-11-10", status = OccurrenceStatus.PAID)).size)
         assertEquals(0, plan(cand("2026-11-10", status = OccurrenceStatus.CANCELLED)).size)
-    }
-
-    @Test fun keyParsing() {
-        assertEquals(12L, occurrenceIdOfKey("12:d3"))
-        assertEquals(7L, occurrenceIdOfKey("7:o2"))
-        assertNull(occurrenceIdOfKey("x:d3"))
     }
 
     // ---------------- alacak / borç vadesi ----------------
@@ -214,7 +207,7 @@ class ReminderPlannerTest {
         assertEquals("12", ownerOfKey("12:d3"))
         assertEquals("c7", ownerOfKey("c7:o3"))
         assertEquals("a5", ownerOfKey("a5:t123"))
-        assertNull(occurrenceIdOfKey("c7:o3"))
-        assertNull(occurrenceIdOfKey("a5:t123"))
+        assertEquals("x", ownerOfKey("x:d3"))
+        assertEquals("7", ownerOfKey("7:o2"))
     }
 }
