@@ -1,8 +1,13 @@
 name: Kod kalitesi (elle)
 
-# Elle çalıştırılır; derlemeyi ve APK üretimini ETKİLEMEZ. Android Lint ve detekt (varsayılan kurallar) raporlarını üretir.
+# Elle çalıştırılır; derlemeyi ve APK üretimini ETKİLEMEZ.
+# Android Lint ve detekt (varsayılan kurallar) raporlarını üretir.
 on:
   workflow_dispatch:
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -14,41 +19,53 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
+      - uses: ./.github/actions/setup-android-build
 
-      - uses: gradle/actions/setup-gradle@v5
-        with:
-          gradle-version: '8.9'
-
-      - name: Gradle wrapper hazırla
+      - name: "🔬 Android Lint"
+        continue-on-error: true
+        shell: bash
         run: |
-          if [ ! -f gradlew ]; then
-            gradle wrapper --gradle-version 8.9
+          set +e
+          ./gradlew lintDebug --no-daemon --console=plain 2>&1 | tee lint.log
+          {
+            echo "### 🔬 Android Lint"
+            if [ -f app/build/reports/lint-results-debug.txt ]; then
+              echo ""
+              echo '```'
+              tail -n 20 app/build/reports/lint-results-debug.txt
+              echo '```'
+            else
+              echo ""
+              echo "Lint raporu üretilemedi (günlüğe bakın)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+
+      - name: "🔬 detekt (bilgi amaçlı)"
+        continue-on-error: true
+        shell: bash
+        run: |
+          SRC_DIRS=""
+          for d in app/src/main/java app/src/main/kotlin; do
+            [ -d "$d" ] && SRC_DIRS="$SRC_DIRS --input $d"
+          done
+          if [ -z "$SRC_DIRS" ]; then
+            echo "::warning::app/src/main/java veya app/src/main/kotlin bulunamadı, detekt atlandı."
+            exit 0
           fi
-          chmod +x gradlew
-
-      - name: Android Lint
-        continue-on-error: true
-        run: ./gradlew lintDebug --no-daemon
-
-      - name: detekt (bilgi amaçlı)
-        continue-on-error: true
-        run: |
           curl -sSL -o detekt-cli.jar https://github.com/detekt/detekt/releases/download/v1.23.7/detekt-cli-1.23.7-all.jar
-          java -jar detekt-cli.jar --input app/src/main/java --report html:detekt-raporu.html --report txt:detekt-raporu.txt || true
+          java -jar detekt-cli.jar $SRC_DIRS --report html:detekt-raporu.html --report txt:detekt-raporu.txt || true
           head -60 detekt-raporu.txt 2>/dev/null || true
 
-      - name: Raporları yükle
+      - name: "📤 Raporları yükle"
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: kod-kalitesi-raporlari
           path: |
-            app/build/reports/lint-results-debug.html
-            app/build/reports/lint-results-debug.txt
+            app/build/reports/
             detekt-raporu.html
             detekt-raporu.txt
+            lint.log
+          retention-days: 14
           if-no-files-found: ignore

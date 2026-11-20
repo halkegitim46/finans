@@ -1,10 +1,9 @@
 name: Android CI + Release
 
-# Tek iş akışı: preflight → version → (build | quality | release) → publish → summary
+# Tek iş akışı: preflight → version → (build | quality | release) → summary
 #  • build   : birim testleri + debug APK. Testler kırık olsa bile APK üretilir; iş en sonda yine KIRMIZI biter.
 #  • release : imzalı, R8'li APK. build işine BAĞLI DEĞİL (paralel); push ve tag'de otomatik, elle çalıştırmada isteğe bağlı.
 #  • quality : Android Lint (bilgi amaçlı; sonucu iş akışını bozmaz).
-#  • publish : yalnızca v* etiketinde GitHub Release oluşturur (tek iş: contents:write).
 # İmza secret'ları: KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD (eski KFT_ önekli adlar da okunur).
 on:
   push:
@@ -88,17 +87,14 @@ jobs:
             if [ -f "$f" ]; then echo "[VAR] $f"; else echo "::error::[YOK] $f"; missing=1; fi
           done
           [ -f gradlew ] && echo "[VAR] gradlew" || echo "[YOK] gradlew — iş akışı üretecek (sorun değil)"
-          # sürüm satırları apply-version.sh ile uyumlu mu?
           grep -qE '^\s*versionCode\s*=\s*[0-9]+' app/build.gradle.kts || { echo "::error::versionCode satırı 'versionCode = <sayı>' biçiminde değil"; missing=1; }
           grep -qE '^\s*versionName\s*=\s*".*"' app/build.gradle.kts || { echo "::error::versionName satırı 'versionName = \"...\"' biçiminde değil"; missing=1; }
-          # imza bloğu
           grep -q 'KEYSTORE_PATH' app/build.gradle.kts || { echo "::warning::KEYSTORE_PATH build.gradle.kts içinde okunmuyor: release imzasız kalabilir"; }
           grep -q 'taskGraph.whenReady' app/build.gradle.kts && echo "[VAR] release imza koruması (taskGraph.whenReady)" || echo "::warning::release imza koruması yok"
           exit $missing
 
   # ============================================================
   # 1) VERSION: ortak, hep artan sürüm kodu
-  #    versionCode = UTC dakika damgası → hangi iş akışı/yeniden çalıştırma olursa olsun yeni APK eskisinin üstüne kurulur.
   # ============================================================
   version:
     needs: preflight
@@ -146,7 +142,6 @@ jobs:
 
       - uses: ./.github/actions/setup-android-build
 
-      # Debug APK de sabit anahtarla imzalanır (varsa): her sürüm eskisinin üstüne kurulur. PR'larda atlanır.
       - name: "🔐 İmza anahtarını hazırla (varsa)"
         id: signing
         if: ${{ github.event_name != 'pull_request' }}
@@ -163,13 +158,12 @@ jobs:
         shell: bash
         run: .github/scripts/apply-version.sh
 
-      # Testler AYRI adım + continue-on-error: kırmızı olsa bile APK üretilir; sonuç en sonda uygulanır.
       - name: "🧪 Birim testleri"
         id: tests
         continue-on-error: true
         shell: bash
         run: |
-          set +e                       # sonucu kendimiz yönetiriz (varsayılan -e özet adımını atlatırdı)
+          set +e
           set -o pipefail
           rc=0
           ./gradlew testDebugUnitTest --no-daemon --stacktrace --console=plain 2>&1 | tee unit-tests.log || rc=$?
@@ -238,7 +232,6 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-      # Test kırıksa iş KIRMIZI olmalı (APK yine de yüklendi).
       - name: "🚦 Test sonucunu uygula"
         if: ${{ always() && steps.tests.outcome == 'failure' }}
         shell: bash
@@ -248,17 +241,18 @@ jobs:
 
   # ============================================================
   # 3) QUALITY: Android Lint (bilgi amaçlı, iş akışını bozmaz)
+  #    continue-on-error ADIM seviyesinde (job seviyesinde değil)
   # ============================================================
   quality:
     needs: version
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-android-build
 
       - name: "🔬 Android Lint"
+        continue-on-error: true
         shell: bash
         run: |
           set +e
@@ -284,8 +278,7 @@ jobs:
         with:
           name: lint-raporu
           path: |
-            app/build/reports/lint-results-debug.html
-            app/build/reports/lint-results-debug.txt
+            app/build/reports/
             lint.log
           retention-days: 14
           if-no-files-found: ignore
@@ -301,7 +294,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
-      contents: write          # yalnızca etiketli sürümde GitHub Release oluşturmak için
+      contents: write
     env:
       VERSION_NAME: ${{ needs.version.outputs.version_name }}
       VERSION_CODE: ${{ needs.version.outputs.version_code }}
@@ -327,7 +320,6 @@ jobs:
         shell: bash
         run: .github/scripts/apply-version.sh
 
-      # Zorunlu: eksik/bozuk anahtar işi nedenini yazarak durdurur (asla sessizce debug anahtarıyla imzalamaz).
       - name: "🔐 Anahtar deposunu çöz ve doğrula"
         id: signing
         shell: bash
@@ -339,7 +331,6 @@ jobs:
           SIGNING_STRICT: "true"
         run: .github/scripts/prepare-signing.sh
 
-      # Parolalar yalnızca bu adımın ortamında; GITHUB_ENV'e yazılmaz.
       - name: "📦 Release APK derle (R8)"
         shell: bash
         env:
@@ -404,7 +395,6 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-      # Üçüncü taraf eylem yok: runner'daki gh CLI ile (tedarik zinciri riski yok).
       - name: "🚀 GitHub Release (yalnızca v* etiketi)"
         if: ${{ startsWith(github.ref, 'refs/tags/v') }}
         shell: bash
@@ -432,7 +422,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # ============================================================
-  # 5) SUMMARY: tek bakışta genel durum (dal korumasında tek "gerekli kontrol" olarak kullanılabilir)
+  # 5) SUMMARY: tek bakışta genel durum
   # ============================================================
   summary:
     if: ${{ always() }}
