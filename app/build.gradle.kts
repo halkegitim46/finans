@@ -84,6 +84,61 @@ ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
 
+// ======================================================================
+// GEÇİŞLİ BAĞIMLILIK SABİTLEME
+// Amaç: libs.versions.toml'de doğrudan tanımlı olmayan, ancak Hilt/Navigation/
+// Compose gibi kütüphanelerin transitif olarak çektiği YENİ AndroidX sürümlerini,
+// AGP 8.7.3 + compileSdk 35 ile uyumlu sürümlere sabitlemek.
+//
+// Bu blok OLMADAN: androidx.hilt:hilt-navigation-compose:1.4.0,
+// androidx.core:core-ktx:1.18.0, androidx.activity:activity-compose:1.13.0,
+// androidx.lifecycle:lifecycle-runtime-compose-android:2.11.0,
+// androidx.navigation:navigation-compose-android:2.10.2 gibi transitif sürümler
+// checkDebugAarMetadata hatası verir (compileSdk 36/37 ister).
+//
+// compileSdk + AGP yükseltildiğinde bu kısıtlar KALDIRILABİLİR.
+// ======================================================================
+configurations.all {
+    resolutionStrategy {
+        // Core / Activity / Lifecycle: compileSdk 35 uyumlu son sürümler
+        force("androidx.core:core:1.15.0")
+        force("androidx.core:core-ktx:1.15.0")
+        force("androidx.activity:activity:1.9.3")
+        force("androidx.activity:activity-ktx:1.9.3")
+        force("androidx.activity:activity-compose:1.9.3")
+        force("androidx.lifecycle:lifecycle-runtime:2.8.7")
+        force("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
+        force("androidx.lifecycle:lifecycle-runtime-compose-android:2.8.7")
+        force("androidx.lifecycle:lifecycle-viewmodel:2.8.7")
+        force("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+        force("androidx.lifecycle:lifecycle-viewmodel-compose-android:2.8.7")
+        force("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
+
+        // Navigation: 2.8.5 hattı compileSdk 35 uyumlu
+        force("androidx.navigation:navigation-common:2.8.5")
+        force("androidx.navigation:navigation-common-ktx:2.8.5")
+        force("androidx.navigation:navigation-runtime:2.8.5")
+        force("androidx.navigation:navigation-runtime-ktx:2.8.5")
+        force("androidx.navigation:navigation-compose:2.8.5")
+        force("androidx.navigation:navigation-compose-android:2.8.5")
+
+        // navigationevent: 1.1.2 compileSdk 36 ister; 1.0.x hattına sabitle
+        force("androidx.navigationevent:navigationevent:1.0.0")
+        force("androidx.navigationevent:navigationevent-android:1.0.0")
+        force("androidx.navigationevent:navigationevent-compose:1.0.0")
+        force("androidx.navigationevent:navigationevent-compose-android:1.0.0")
+
+        // Hilt Navigation Compose: 1.4.0 compileSdk 37 ister; 1.2.0 hattına sabitle
+        force("androidx.hilt:hilt-navigation:1.2.0")
+        force("androidx.hilt:hilt-navigation-compose:1.2.0")
+        force("androidx.hilt:hilt-lifecycle-viewmodel:1.2.0")
+        force("androidx.hilt:hilt-lifecycle-viewmodel-compose:1.2.0")
+        force("androidx.hilt:hilt-common:1.2.0")
+        force("androidx.hilt:hilt-work:1.2.0")
+        force("androidx.hilt:hilt-compiler:1.2.0")
+    }
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime)
