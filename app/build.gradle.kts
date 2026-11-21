@@ -85,17 +85,12 @@ ksp {
 }
 
 // ======================================================================
-// GEÇİŞLİ BAĞIMLILIK SABİTLEME
+// GEÇİŞLİ BAĞIMLILIK SABİTLEME (transitive dependency constraints)
 // Amaç: libs.versions.toml'de doğrudan tanımlı olmayan, ancak Hilt/Navigation/
 // Compose gibi kütüphanelerin transitif olarak çektiği YENİ AndroidX sürümlerini,
 // AGP 8.7.3 + compileSdk 35 ile uyumlu sürümlere sabitlemek.
 //
-// Bu blok OLMADAN: androidx.hilt:hilt-navigation-compose:1.4.0,
-// androidx.core:core-ktx:1.18.0, androidx.activity:activity-compose:1.13.0,
-// androidx.lifecycle:lifecycle-runtime-compose-android:2.11.0,
-// androidx.navigation:navigation-compose-android:2.10.2 gibi transitif sürümler
-// checkDebugAarMetadata hatası verir (compileSdk 36/37 ister).
-//
+// Hata logunda görünen tüm transitif sürümler burada force ile sabitlenmiştir.
 // compileSdk + AGP yükseltildiğinde bu kısıtlar KALDIRILABİLİR.
 // ======================================================================
 configurations.all {
@@ -122,7 +117,7 @@ configurations.all {
         force("androidx.navigation:navigation-compose:2.8.5")
         force("androidx.navigation:navigation-compose-android:2.8.5")
 
-        // navigationevent: 1.1.2 compileSdk 36 ister; 1.0.x hattına sabitle
+        // navigationevent: 1.2.0 compileSdk 36 ister; 1.0.0 hattına sabitle
         force("androidx.navigationevent:navigationevent:1.0.0")
         force("androidx.navigationevent:navigationevent-android:1.0.0")
         force("androidx.navigationevent:navigationevent-compose:1.0.0")
