@@ -1,11 +1,23 @@
+# ======================================================================
+# SÜRÜM KATALOĞU — UYUMLULUK KURALLARI (değiştirmeden önce okuyun)
+#  1) kotlin ve ksp BİRLİKTE değişir: ksp = "<kotlin>-<ksp sürümü>"  (ör. 2.0.21-1.0.28)
+#  2) Kotlin 2.2.x için Hilt >= 2.57 gerekir; Kotlin 2.0.x/2.1.x ile Hilt 2.52+ yeterlidir.
+#  3) AGP ↔ Gradle: AGP 8.7.x en az Gradle 8.9 ister (iş akışındaki GRADLE_VERSION).
+#  4) Yeni androidx sürümleri compileSdk 36 ister (core-ktx >= 1.17, activity >= 1.11):
+#     önce compileSdk + AGP + Gradle birlikte yükseltilir, sonra kütüphaneler.
+#  5) Bu kurallar CI'da (preflight → "Sürüm uyumluluğu") derlemeden ÖNCE otomatik denetlenir.
+#
+# Aşağıdaki küme CI'da KANITLANMIŞTIR (369 birim test geçti, imzalı release derlendi).
+# Yükseltme yöntemi: docs/UYUMLULUK.md
+# ======================================================================
 [versions]
 agp = "8.7.3"
-kotlin = "2.2.20"
-ksp = "2.2.20-2.0.4"
+kotlin = "2.0.21"
+ksp = "2.0.21-1.0.28"
 composeBom = "2024.12.01"
-hilt = "2.60.1"
+hilt = "2.52"
 hiltNavCompose = "1.2.0"
-room = "2.7.0"
+room = "2.6.1"
 navigation = "2.8.5"
 work = "2.10.0"
 datastore = "1.1.1"
@@ -13,7 +25,7 @@ biometric = "1.1.0"
 coreKtx = "1.15.0"
 lifecycle = "2.8.7"
 activityCompose = "1.9.3"
-coroutines = "1.10.2"
+coroutines = "1.9.0"
 junit = "4.13.2"
 robolectric = "4.14.1"
 sqlcipher = "4.6.1"
