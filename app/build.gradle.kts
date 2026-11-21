@@ -110,27 +110,27 @@ configurations.all {
         force("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
 
         // Navigation: 2.8.5 hattı compileSdk 35 uyumlu
-        force("androidx.navigation:navigation-common:2.8.5")
-        force("androidx.navigation:navigation-common-ktx:2.8.5")
-        force("androidx.navigation:navigation-runtime:2.8.5")
-        force("androidx.navigation:navigation-runtime-ktx:2.8.5")
-        force("androidx.navigation:navigation-compose:2.8.5")
-        force("androidx.navigation:navigation-compose-android:2.8.5")
+        force("androidx.navigation:navigation-common:2.10.2")
+        force("androidx.navigation:navigation-common-ktx:2.10.2")
+        force("androidx.navigation:navigation-runtime:2.10.2")
+        force("androidx.navigation:navigation-runtime-ktx:2.10.2")
+        force("androidx.navigation:navigation-compose:2.10.2")
+        force("androidx.navigation:navigation-compose-android:2.10.2")
 
         // navigationevent: 1.2.0 compileSdk 36 ister; 1.0.0 hattına sabitle
-        force("androidx.navigationevent:navigationevent:1.0.0")
-        force("androidx.navigationevent:navigationevent-android:1.0.0")
-        force("androidx.navigationevent:navigationevent-compose:1.0.0")
-        force("androidx.navigationevent:navigationevent-compose-android:1.0.0")
+        force("androidx.navigationevent:navigationevent:1.2.0")
+        force("androidx.navigationevent:navigationevent-android:1.2.0")
+        force("androidx.navigationevent:navigationevent-compose:1.2.0")
+        force("androidx.navigationevent:navigationevent-compose-android:1.2.0")
 
         // Hilt Navigation Compose: 1.4.0 compileSdk 37 ister; 1.2.0 hattına sabitle
-        force("androidx.hilt:hilt-navigation:1.2.0")
-        force("androidx.hilt:hilt-navigation-compose:1.2.0")
-        force("androidx.hilt:hilt-lifecycle-viewmodel:1.2.0")
-        force("androidx.hilt:hilt-lifecycle-viewmodel-compose:1.2.0")
-        force("androidx.hilt:hilt-common:1.2.0")
-        force("androidx.hilt:hilt-work:1.2.0")
-        force("androidx.hilt:hilt-compiler:1.2.0")
+        force("androidx.hilt:hilt-navigation:1.4.0")
+        force("androidx.hilt:hilt-navigation-compose:1.4.0")
+        force("androidx.hilt:hilt-lifecycle-viewmodel:1.4.0")
+        force("androidx.hilt:hilt-lifecycle-viewmodel-compose:1.4.0")
+        force("androidx.hilt:hilt-common:1.4.0")
+        force("androidx.hilt:hilt-work:1.4.0")
+        force("androidx.hilt:hilt-compiler:1.4.0")
     }
 }
 
